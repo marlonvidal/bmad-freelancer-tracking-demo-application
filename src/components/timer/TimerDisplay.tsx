@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useTimerContext } from '@/contexts/TimerContext';
 import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
 import { formatDuration } from '@/utils/timeUtils';
@@ -6,6 +6,7 @@ import { formatDuration } from '@/utils/timeUtils';
 interface TimerDisplayProps {
   taskId: string;
   displayMode?: 'elapsed' | 'total' | 'auto';
+  refreshKey?: number; // Optional key to trigger refresh when manual entries change
 }
 
 /**
@@ -18,7 +19,8 @@ interface TimerDisplayProps {
  */
 const TimerDisplayComponent: React.FC<TimerDisplayProps> = ({ 
   taskId, 
-  displayMode = 'auto' 
+  displayMode = 'auto',
+  refreshKey = 0
 }) => {
   const { activeTaskId, getElapsedTime, status } = useTimerContext();
   const [totalTime, setTotalTime] = useState<number>(0);
@@ -44,7 +46,7 @@ const TimerDisplayComponent: React.FC<TimerDisplayProps> = ({
     return isActive ? elapsedMinutes : totalTime;
   }, [displayMode, isActive, elapsedMinutes, totalTime]);
 
-  // Load total time on mount and when taskId changes
+  // Load total time on mount and when taskId or refreshKey changes
   useEffect(() => {
     let isMounted = true;
 
@@ -72,7 +74,7 @@ const TimerDisplayComponent: React.FC<TimerDisplayProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [taskId, timeEntryRepository]);
+  }, [taskId, refreshKey, timeEntryRepository]);
 
   // Update total time when timer stops (new time entry created)
   useEffect(() => {

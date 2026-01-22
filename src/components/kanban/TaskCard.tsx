@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Task } from '@/types/task';
 import { TimerControl } from '@/components/timer/TimerControl';
 import { TimerDisplay } from '@/components/timer/TimerDisplay';
+import { TimeEntryModal } from '@/components/timer/TimeEntryModal';
+import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
+import { TimeEntry } from '@/types/timeEntry';
 
 interface TaskCardProps {
   task: Task;
@@ -91,54 +94,122 @@ const DueDateDisplay: React.FC<{ dueDate: Date }> = ({ dueDate }) => {
  * Styled with Tailwind CSS for visual distinction and readability.
  */
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
+  const [isTimeEntryModalOpen, setIsTimeEntryModalOpen] = useState(false);
+  const [timerDisplayRefreshKey, setTimerDisplayRefreshKey] = useState(0);
+  const timeEntryRepository = new TimeEntryRepository();
+
+  /**
+   * Handle opening time entry modal
+   */
+  const handleAddTimeClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setIsTimeEntryModalOpen(true);
+  };
+
+  /**
+   * Handle closing time entry modal
+   */
+  const handleCloseModal = () => {
+    setIsTimeEntryModalOpen(false);
+    // Refresh TimerDisplay in case entries were edited/deleted in modal
+    setTimerDisplayRefreshKey(prev => prev + 1);
+  };
+
+  /**
+   * Handle time entry submission
+   */
+  const handleTimeEntrySubmit = async (entry: Omit<TimeEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      await timeEntryRepository.create(entry);
+      // Trigger TimerDisplay refresh
+      setTimerDisplayRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Error creating time entry:', error);
+      throw error; // Re-throw to let modal handle error display
+    }
+  };
+
   return (
-    <div
-      role="article"
-      aria-labelledby={`task-${task.id}-title`}
-      onClick={onClick}
-      className={`
-        bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3
-        cursor-pointer transition-all duration-200
-        hover:shadow-md hover:scale-[1.02]
-        focus:outline-none focus:ring-2 focus:ring-blue-500
-        ${onClick ? '' : 'cursor-default'}
-      `}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={(e) => {
-        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-    >
-      {/* Task Header with Timer Control */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3
-          id={`task-${task.id}-title`}
-          className="text-base font-semibold text-gray-900 line-clamp-2 flex-1"
-        >
-          {task.title}
-        </h3>
-        <TimerControl taskId={task.id} />
+    <>
+      <div
+        role="article"
+        aria-labelledby={`task-${task.id}-title`}
+        onClick={onClick}
+        className={`
+          bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3
+          cursor-pointer transition-all duration-200
+          hover:shadow-md hover:scale-[1.02]
+          focus:outline-none focus:ring-2 focus:ring-blue-500
+          ${onClick ? '' : 'cursor-default'}
+        `}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={(e) => {
+          if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+      >
+        {/* Task Header with Timer Control */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3
+            id={`task-${task.id}-title`}
+            className="text-base font-semibold text-gray-900 line-clamp-2 flex-1"
+          >
+            {task.title}
+          </h3>
+          <TimerControl taskId={task.id} />
+        </div>
+
+        {/* Task Metadata */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* Priority Badge */}
+          {task.priority && (
+            <PriorityBadge priority={task.priority} />
+          )}
+
+          {/* Due Date */}
+          {task.dueDate && (
+            <DueDateDisplay dueDate={task.dueDate} />
+          )}
+        </div>
+
+        {/* Time Display */}
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between gap-2">
+            <TimerDisplay taskId={task.id} refreshKey={timerDisplayRefreshKey} />
+            <button
+              onClick={handleAddTimeClick}
+              className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Add manual time entry"
+              title="Add manual time entry"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Task Metadata */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        {/* Priority Badge */}
-        {task.priority && (
-          <PriorityBadge priority={task.priority} />
-        )}
-
-        {/* Due Date */}
-        {task.dueDate && (
-          <DueDateDisplay dueDate={task.dueDate} />
-        )}
-      </div>
-
-      {/* Time Display */}
-      <div className="mt-2 pt-2 border-t border-gray-100">
-        <TimerDisplay taskId={task.id} />
-      </div>
-    </div>
+      {/* Time Entry Modal */}
+      <TimeEntryModal
+        isOpen={isTimeEntryModalOpen}
+        taskId={task.id}
+        onClose={handleCloseModal}
+        onSubmit={handleTimeEntrySubmit}
+      />
+    </>
   );
 };
