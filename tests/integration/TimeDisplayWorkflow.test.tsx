@@ -134,7 +134,7 @@ describe('TimeDisplayWorkflow', () => {
       }
 
       // Get initial time
-      let previousTime = screen.getByRole('timer').textContent || '';
+      const previousTime = screen.getByRole('timer').textContent || '';
 
       // Advance by 1 second
       act(() => {

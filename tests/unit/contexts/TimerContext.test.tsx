@@ -5,6 +5,8 @@ import { TimerStateRepository } from '@/services/data/repositories/TimerStateRep
 import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
 import { db } from '@/services/data/database';
 import { TimerState } from '@/types/timerState';
+import { Task } from '@/types/task';
+import { Column } from '@/types/column';
 
 // Test component that uses the context
 const TestComponent: React.FC<{ onContextValue?: (value: any) => void }> = ({ onContextValue }) => {
@@ -29,14 +31,65 @@ const TestComponent: React.FC<{ onContextValue?: (value: any) => void }> = ({ on
   );
 };
 
+// Helper function to create a test column
+const createTestColumn = async (columnId: string = 'column1', name: string = 'Test Column'): Promise<Column> => {
+  const now = new Date();
+  const column: Column = {
+    id: columnId,
+    name,
+    position: 0,
+    color: null,
+    createdAt: now,
+    updatedAt: now
+  };
+  await db.columns.add(column);
+  return column;
+};
+
+// Helper function to create a test task
+const createTestTask = async (taskId: string, overrides: Partial<Task> = {}): Promise<Task> => {
+  // Ensure column exists
+  const existingColumn = await db.columns.get('column1');
+  if (!existingColumn) {
+    await createTestColumn('column1');
+  }
+  
+  const now = new Date();
+  const task: Task = {
+    id: taskId,
+    title: `Test Task ${taskId}`,
+    description: undefined,
+    columnId: 'column1',
+    position: 0,
+    clientId: null,
+    projectId: null,
+    isBillable: false,
+    hourlyRate: null,
+    timeEstimate: null,
+    dueDate: null,
+    priority: null,
+    tags: [],
+    createdAt: now,
+    updatedAt: now,
+    ...overrides
+  };
+  await db.tasks.add(task);
+  return task;
+};
+
 describe('TimerContext', () => {
   beforeEach(async () => {
     await db.timerState.clear();
     await db.timeEntries.clear();
+    await db.tasks.clear();
+    await db.columns.clear();
   });
 
   describe('TimerProvider', () => {
     it('loads timer state from IndexedDB on mount', async () => {
+      // Create a task for the timer
+      await createTestTask('task1');
+      
       // Create an active timer state in IndexedDB
       const timerState: TimerState = {
         taskId: 'task1',
@@ -77,6 +130,9 @@ describe('TimerContext', () => {
     });
 
     it('starts timer and updates state', async () => {
+      // Create a task before starting timer
+      await createTestTask('task1');
+      
       let contextValue: any;
       const onContextValue = (value: any) => {
         contextValue = value;
@@ -108,6 +164,9 @@ describe('TimerContext', () => {
     });
 
     it('stops timer and creates time entry', async () => {
+      // Create a task before creating timer state
+      await createTestTask('task1');
+      
       let contextValue: any;
       const onContextValue = (value: any) => {
         contextValue = value;
@@ -152,6 +211,10 @@ describe('TimerContext', () => {
     });
 
     it('enforces single active timer rule', async () => {
+      // Create tasks before starting timers
+      await createTestTask('task1');
+      await createTestTask('task2');
+      
       let contextValue: any;
       const onContextValue = (value: any) => {
         contextValue = value;
@@ -174,12 +237,20 @@ describe('TimerContext', () => {
 
       expect(screen.getByTestId('active-task-id')).toHaveTextContent('task1');
 
+      // Wait for debounce to complete (100ms + small buffer)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      });
+
       // Start timer for task2 (should stop task1 timer)
       await act(async () => {
         await contextValue.startTimer('task2');
       });
 
-      expect(screen.getByTestId('active-task-id')).toHaveTextContent('task2');
+      // Wait for debounce and state update
+      await waitFor(() => {
+        expect(screen.getByTestId('active-task-id')).toHaveTextContent('task2');
+      }, { timeout: 1000 });
       expect(screen.getByTestId('is-active-task1')).toHaveTextContent('false');
       expect(screen.getByTestId('is-active-task2')).toHaveTextContent('true');
 
@@ -194,6 +265,10 @@ describe('TimerContext', () => {
     });
 
     it('handles rapid start/stop operations', async () => {
+      // Create tasks before starting timers
+      await createTestTask('task1');
+      await createTestTask('task2');
+      
       let contextValue: any;
       const onContextValue = (value: any) => {
         contextValue = value;
@@ -212,12 +287,31 @@ describe('TimerContext', () => {
       // Rapid start/stop
       await act(async () => {
         await contextValue.startTimer('task1');
+      });
+
+      // Wait for debounce
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      });
+
+      await act(async () => {
         await contextValue.stopTimer();
+      });
+
+      // Wait for debounce
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      });
+
+      await act(async () => {
         await contextValue.startTimer('task2');
       });
 
-      expect(screen.getByTestId('active-task-id')).toHaveTextContent('task2');
-      expect(screen.getByTestId('status')).toHaveTextContent('active');
+      // Wait for debounce and state update
+      await waitFor(() => {
+        expect(screen.getByTestId('active-task-id')).toHaveTextContent('task2');
+        expect(screen.getByTestId('status')).toHaveTextContent('active');
+      }, { timeout: 1000 });
     });
 
     it('returns null when stopping timer with no active timer', async () => {
@@ -245,6 +339,9 @@ describe('TimerContext', () => {
     });
 
     it('updates elapsed time every second when timer is active', async () => {
+      // Create a task before starting timer
+      await createTestTask('task1');
+      
       jest.useFakeTimers();
       
       let contextValue: any;
@@ -282,6 +379,9 @@ describe('TimerContext', () => {
     });
 
     it('getElapsedTime returns elapsed time for active task', async () => {
+      // Create a task before starting timer
+      await createTestTask('task1');
+      
       jest.useFakeTimers();
       
       let contextValue: any;
@@ -320,6 +420,10 @@ describe('TimerContext', () => {
     });
 
     it('getElapsedTime returns 0 for inactive task', async () => {
+      // Create tasks before starting timer
+      await createTestTask('task1');
+      await createTestTask('task2');
+      
       let contextValue: any;
       const onContextValue = (value: any) => {
         contextValue = value;
@@ -350,6 +454,9 @@ describe('TimerContext', () => {
     });
 
     it('getElapsedTime returns 0 when timer stops', async () => {
+      // Create a task before starting timer
+      await createTestTask('task1');
+      
       let contextValue: any;
       const onContextValue = (value: any) => {
         contextValue = value;

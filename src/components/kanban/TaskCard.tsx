@@ -92,8 +92,11 @@ const DueDateDisplay: React.FC<{ dueDate: Date }> = ({ dueDate }) => {
  * 
  * Displays task title prominently, due date (if set), and priority indicator (if set).
  * Styled with Tailwind CSS for visual distinction and readability.
+ * 
+ * Optimized with React.memo to prevent unnecessary re-renders when other tasks change.
+ * Only re-renders when this specific task's props change or when timer state changes for this task.
  */
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
+const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const [isTimeEntryModalOpen, setIsTimeEntryModalOpen] = useState(false);
   const [timerDisplayRefreshKey, setTimerDisplayRefreshKey] = useState(0);
   const timeEntryRepository = new TimeEntryRepository();
@@ -213,3 +216,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
     </>
   );
 };
+
+// Memoize component to prevent unnecessary re-renders
+// Only re-renders when task prop changes or when timer state changes for this specific task
+export const TaskCard = React.memo(TaskCardComponent, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if task data actually changed
+  // Timer state changes are handled by TimerDisplay and TimerControl components internally
+  return (
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.title === nextProps.task.title &&
+    prevProps.task.description === nextProps.task.description &&
+    prevProps.task.columnId === nextProps.task.columnId &&
+    prevProps.task.position === nextProps.task.position &&
+    prevProps.task.priority === nextProps.task.priority &&
+    prevProps.task.dueDate?.getTime() === nextProps.task.dueDate?.getTime() &&
+    prevProps.onClick === nextProps.onClick
+  );
+});

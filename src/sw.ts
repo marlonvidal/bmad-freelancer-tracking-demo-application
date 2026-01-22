@@ -1,5 +1,5 @@
-/* eslint-disable no-undef */
-/* eslint-disable no-restricted-globals */
+ 
+ 
 import { precacheAndRoute } from 'workbox-precaching';
 import { clientsClaim, skipWaiting } from 'workbox-core';
 import { CacheFirst } from 'workbox-strategies';

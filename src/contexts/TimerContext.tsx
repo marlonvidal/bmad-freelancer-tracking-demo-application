@@ -63,6 +63,11 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const wasVisibleRef = useRef<boolean>(true);
   const recoveryCheckedRef = useRef<boolean>(false);
+  
+  // Refs for debouncing rapid operations
+  const isStartingRef = useRef<boolean>(false);
+  const isStoppingRef = useRef<boolean>(false);
+  const pendingStartRef = useRef<string | null>(null);
 
   // Initialize tab title utility
   useEffect(() => {
@@ -74,6 +79,7 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
 
   /**
    * Load timer state from IndexedDB with recovery logic
+   * Includes validation for corrupted state
    */
   const loadTimerState = useCallback(async (showRecoveryNotification = false) => {
     try {
@@ -81,9 +87,55 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
       const timerState = await timerStateRepository.getActive();
       
       if (timerState && timerState.status === 'active') {
+        // Validate timer state
+        if (!timerState.taskId || !timerState.startTime) {
+          console.error('Invalid timer state: missing taskId or startTime');
+          await timerStateRepository.delete(timerState.taskId || '');
+          setState({
+            activeTaskId: null,
+            startTime: null,
+            elapsedTime: 0,
+            status: 'idle',
+            loading: false,
+            error: null
+          });
+          return;
+        }
+
         const startTime = new Date(timerState.startTime);
+        
+        // Validate startTime is a valid date
+        if (isNaN(startTime.getTime())) {
+          console.error('Invalid timer state: invalid startTime');
+          await timerStateRepository.delete(timerState.taskId);
+          setState({
+            activeTaskId: null,
+            startTime: null,
+            elapsedTime: 0,
+            status: 'idle',
+            loading: false,
+            error: null
+          });
+          return;
+        }
+
         const now = new Date();
         const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+        
+        // Validate elapsed time is not negative (shouldn't happen, but handle gracefully)
+        if (elapsedSeconds < 0) {
+          console.warn('Negative elapsed time detected, clearing timer state');
+          await timerStateRepository.delete(timerState.taskId);
+          setState({
+            activeTaskId: null,
+            startTime: null,
+            elapsedTime: 0,
+            status: 'idle',
+            loading: false,
+            error: null
+          });
+          return;
+        }
         
         // Check if timer state is very old (more than 24 hours) - might be stale
         const hoursElapsed = elapsedSeconds / 3600;
@@ -99,6 +151,27 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
             error: null
           });
           return;
+        }
+
+        // Validate task still exists
+        try {
+          const task = await taskRepository.getById(timerState.taskId);
+          if (!task) {
+            console.warn('Task for timer no longer exists, clearing timer state');
+            await timerStateRepository.delete(timerState.taskId);
+            setState({
+              activeTaskId: null,
+              startTime: null,
+              elapsedTime: 0,
+              status: 'idle',
+              loading: false,
+              error: null
+            });
+            return;
+          }
+        } catch (taskError) {
+          console.error('Error validating task:', taskError);
+          // Continue anyway - task validation failure shouldn't prevent timer recovery
         }
         
         setState({
@@ -135,8 +208,9 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
         error: errorObj 
       }));
       console.error('Error loading timer state:', error);
+      // Don't throw - allow app to continue even if timer state load fails
     }
-  }, [timerStateRepository]);
+  }, [timerStateRepository, taskRepository]);
 
   /**
    * Initialize timer state on mount with recovery
@@ -160,7 +234,7 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     broadcastChannelRef.current = channel;
 
     channel.onmessage = (event) => {
-      const { type, taskId } = event.data;
+      const { type } = event.data;
       
       if (type === 'TIMER_STARTED') {
         // Another tab started a timer - reload state
@@ -217,20 +291,31 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
 
   /**
    * Periodic timer state save (every 30 seconds)
+   * Uses refs to access current state without causing re-renders
    */
   useEffect(() => {
     if (state.status === 'active' && state.activeTaskId && state.startTime) {
+      // Store current values in refs for interval access
+      const currentTaskId = state.activeTaskId;
+      const currentStartTime = state.startTime;
+      
       periodicSaveRef.current = setInterval(async () => {
         try {
+          // Use refs to check current state without re-render
+          // Note: This is a best-effort save - state may have changed
           const timerState: TimerState = {
-            taskId: state.activeTaskId!,
-            startTime: state.startTime!,
+            taskId: currentTaskId,
+            startTime: currentStartTime,
             lastUpdateTime: new Date(),
             status: 'active',
           };
-          await timerStateRepository.save(timerState);
+          // Fire and forget - don't await to avoid blocking
+          timerStateRepository.save(timerState).catch(err => {
+            console.error('Error saving timer state periodically:', err);
+            // Don't interrupt timer if save fails
+          });
         } catch (error) {
-          console.error('Error saving timer state periodically:', error);
+          console.error('Error in periodic save interval:', error);
           // Don't interrupt timer if save fails
         }
       }, 30000); // 30 seconds
@@ -244,6 +329,7 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     return () => {
       if (periodicSaveRef.current) {
         clearInterval(periodicSaveRef.current);
+        periodicSaveRef.current = null;
       }
     };
   }, [state.status, state.activeTaskId, state.startTime, timerStateRepository]);
@@ -252,7 +338,7 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
    * Beforeunload handler for graceful shutdown
    */
   useEffect(() => {
-    const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
+    const handleBeforeUnload = async () => {
       if (state.status === 'active' && state.activeTaskId && state.startTime) {
         try {
           // Save current timer state
@@ -277,13 +363,21 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
 
   /**
    * Update elapsed time every second when timer is active (only when tab is visible)
+   * Optimized to only update when value actually changes
    */
   useEffect(() => {
     if (state.status === 'active' && state.startTime && isVisible) {
       intervalRef.current = setInterval(() => {
         const now = new Date();
         const elapsedSeconds = Math.floor((now.getTime() - state.startTime!.getTime()) / 1000);
-        setState(prev => ({ ...prev, elapsedTime: elapsedSeconds }));
+        
+        // Only update state if elapsed time actually changed (prevents unnecessary re-renders)
+        setState(prev => {
+          if (prev.elapsedTime !== elapsedSeconds) {
+            return { ...prev, elapsedTime: elapsedSeconds };
+          }
+          return prev; // Return same reference if no change
+        });
       }, 1000);
     } else {
       if (intervalRef.current) {
@@ -295,6 +389,7 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [state.status, state.startTime, isVisible]);
@@ -318,15 +413,55 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
 
   /**
    * Stop the active timer and create a time entry
+   * Debounced to prevent rapid calls
    */
   const stopTimer = useCallback(async (): Promise<TimeEntry | null> => {
+    // Debounce: prevent rapid stop calls
+    if (isStoppingRef.current) {
+      return null;
+    }
+
     try {
+      isStoppingRef.current = true;
+
       if (!state.activeTaskId || !state.startTime || state.status !== 'active') {
+        isStoppingRef.current = false;
+        return null;
+      }
+
+      // Validate timer state
+      if (!state.startTime || isNaN(state.startTime.getTime())) {
+        console.error('Invalid startTime in timer state');
+        setState(prev => ({
+          ...prev,
+          error: new Error('Invalid timer state'),
+          status: 'idle',
+          activeTaskId: null,
+          startTime: null,
+          elapsedTime: 0
+        }));
+        isStoppingRef.current = false;
         return null;
       }
 
       const endTime = new Date();
       const durationMinutes = Math.floor((endTime.getTime() - state.startTime.getTime()) / (1000 * 60));
+
+      // Validate duration (should be positive)
+      if (durationMinutes < 0) {
+        console.warn('Negative duration detected, resetting timer');
+        await timerStateRepository.delete(state.activeTaskId);
+        setState({
+          activeTaskId: null,
+          startTime: null,
+          elapsedTime: 0,
+          status: 'idle',
+          loading: false,
+          error: null
+        });
+        isStoppingRef.current = false;
+        return null;
+      }
 
       // Create time entry
       const timeEntry = await timeEntryRepository.create({
@@ -366,22 +501,82 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
       const errorObj = error instanceof Error ? error : new Error('Failed to stop timer');
       setState(prev => ({ ...prev, error: errorObj }));
       console.error('Error stopping timer:', error);
+      // Reset debounce flag on error
+      isStoppingRef.current = false;
       throw errorObj;
+    } finally {
+      // Reset debounce flag after a short delay to allow operation to complete
+      setTimeout(() => {
+        isStoppingRef.current = false;
+      }, 100);
     }
-  }, [state.activeTaskId, state.startTime, state.status, timeEntryRepository, timerStateRepository]);
+  }, [state.activeTaskId, state.startTime, state.status, timeEntryRepository, timerStateRepository, timerService]);
 
   /**
    * Start timer for a task
    * Enforces single active timer rule: stops previous timer if active
+   * Debounced to prevent rapid calls
    */
   const startTimer = useCallback(async (taskId: string): Promise<void> => {
+    // Debounce: prevent rapid start calls
+    if (isStartingRef.current) {
+      // Queue the request if different task
+      if (pendingStartRef.current !== taskId) {
+        pendingStartRef.current = taskId;
+      }
+      return;
+    }
+
+    // Validate taskId
+    if (!taskId || typeof taskId !== 'string') {
+      const errorObj = new Error('Invalid task ID');
+      setState(prev => ({ ...prev, error: errorObj }));
+      throw errorObj;
+    }
+
     try {
+      isStartingRef.current = true;
+      pendingStartRef.current = null;
+
+      // Validate task exists before starting timer (Task 13: Add timer state validation)
+      // Handle invalid timer state gracefully - validate but don't crash app
+      try {
+        const task = await taskRepository.getById(taskId);
+        if (!task) {
+          const errorObj = new Error(`Task with ID ${taskId} not found`);
+          setState(prev => ({ ...prev, error: errorObj }));
+          isStartingRef.current = false;
+          throw errorObj;
+        }
+      } catch (error) {
+        // If error is already our validation error, rethrow it
+        if (error instanceof Error && error.message.includes('not found')) {
+          throw error;
+        }
+        // For other errors (e.g., repository errors), handle gracefully
+        const errorObj = error instanceof Error ? error : new Error('Failed to validate task');
+        setState(prev => ({ ...prev, error: errorObj }));
+        isStartingRef.current = false;
+        throw errorObj;
+      }
+
       // Stop any existing active timer first (enforce single active timer rule)
-      if (state.activeTaskId && state.status === 'active') {
-        await stopTimer();
+      if (state.activeTaskId && state.status === 'active' && state.activeTaskId !== taskId) {
+        try {
+          await stopTimer();
+        } catch (error) {
+          console.error('Error stopping previous timer:', error);
+          // Continue with starting new timer even if stopping previous failed
+        }
       }
 
       const now = new Date();
+      
+      // Validate date
+      if (isNaN(now.getTime())) {
+        throw new Error('Invalid date');
+      }
+
       const timerState: TimerState = {
         taskId,
         startTime: now,
@@ -416,9 +611,23 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
       const errorObj = error instanceof Error ? error : new Error('Failed to start timer');
       setState(prev => ({ ...prev, error: errorObj }));
       console.error('Error starting timer:', error);
+      isStartingRef.current = false;
       throw errorObj;
+    } finally {
+      // Reset debounce flag after a short delay to allow operation to complete
+      setTimeout(() => {
+        isStartingRef.current = false;
+        // Process pending start if any
+        if (pendingStartRef.current) {
+          const pendingTaskId = pendingStartRef.current;
+          pendingStartRef.current = null;
+          startTimer(pendingTaskId).catch(err => {
+            console.error('Error processing pending start:', err);
+          });
+        }
+      }, 100);
     }
-  }, [state.activeTaskId, state.status, timerStateRepository, timerService, stopTimer]);
+  }, [state.activeTaskId, state.status, timerStateRepository, timerService, stopTimer, taskRepository]);
 
   /**
    * Get elapsed time for a specific task (in seconds)
@@ -444,7 +653,8 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     setBackgroundTimerNotification(null);
   }, []);
 
-  const value: TimerContextValue = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value: TimerContextValue = useMemo(() => ({
     ...state,
     startTimer,
     stopTimer,
@@ -452,7 +662,15 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     isActive,
     backgroundTimerNotification,
     clearBackgroundTimerNotification
-  };
+  }), [
+    state,
+    startTimer,
+    stopTimer,
+    getElapsedTime,
+    isActive,
+    backgroundTimerNotification,
+    clearBackgroundTimerNotification
+  ]);
 
   return (
     <TimerContext.Provider value={value}>
