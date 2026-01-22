@@ -18,9 +18,10 @@ import { Task } from '@/types/task';
  */
 export const KanbanBoard: React.FC = () => {
   const { columns, loading, error, reorderColumns } = useColumnContext();
-  const { createTask } = useTaskContext();
+  const { createTask, updateTask, tasks } = useTaskContext();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [initialColumnId, setInitialColumnId] = useState<string | undefined>(undefined);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Configure sensors for mouse and keyboard drag-and-drop
   const sensors = useSensors(
@@ -61,31 +62,207 @@ export const KanbanBoard: React.FC = () => {
   };
 
   /**
-   * Handle drag end event
-   * Reorders columns based on new position
+   * Handle drag start event
+   * Tracks which item is being dragged (column or task)
+   * Prevents multiple simultaneous drags
    */
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragStart = () => {
+    if (isDragging) {
+      // Prevent multiple simultaneous drags
+      return;
+    }
+    setIsDragging(true);
+  };
+
+  /**
+   * Handle drag over event
+   * Provides visual feedback during drag
+   */
+  const handleDragOver = () => {
+    // Visual feedback is handled by individual components
+    // This handler can be used for additional logic if needed
+  };
+
+  /**
+   * Handle drag end event
+   * Handles both column reordering and task movement/reordering
+   * 
+   * Supports three drag operations:
+   * 1. Column reordering: When a column is dragged over another column
+   * 2. Task movement between columns: When a task is dragged over a column
+   * 3. Task reordering within/between columns: When a task is dragged over another task
+   * 
+   * @param event - DragEndEvent from @dnd-kit containing active and over items
+   * @throws Logs errors but doesn't throw (errors handled by TaskContext rollback)
+   */
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    
+    // Reset dragging state
+    setIsDragging(false);
 
     if (!over || active.id === over.id) {
       return; // No change in position
     }
 
-    // Get current column order
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Check if dragging a column (column reordering)
     const columnIds = columns.map(col => col.id);
-    const oldIndex = columnIds.indexOf(active.id as string);
-    const newIndex = columnIds.indexOf(over.id as string);
+    const isColumnDrag = columnIds.includes(activeId);
 
-    if (oldIndex !== -1 && newIndex !== -1) {
-      // Reorder array
-      const newColumnIds = [...columnIds];
-      const [removed] = newColumnIds.splice(oldIndex, 1);
-      newColumnIds.splice(newIndex, 0, removed);
+    if (isColumnDrag && columnIds.includes(overId)) {
+      // Column reordering
+      const oldIndex = columnIds.indexOf(activeId);
+      const newIndex = columnIds.indexOf(overId);
 
-      // Persist new order
-      reorderColumns(newColumnIds).catch((error) => {
-        console.error('Error reordering columns:', error);
-      });
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newColumnIds = [...columnIds];
+        const [removed] = newColumnIds.splice(oldIndex, 1);
+        newColumnIds.splice(newIndex, 0, removed);
+
+        reorderColumns(newColumnIds).catch((error) => {
+          console.error('Error reordering columns:', error);
+        });
+      }
+      return;
+    }
+
+    // Check if dragging a task
+    const activeTask = tasks.find(t => t.id === activeId);
+    if (!activeTask) {
+      return; // Not a task drag
+    }
+
+    // Check if dropping on a column (task movement between columns)
+    const targetColumn = columns.find(col => col.id === overId);
+    if (targetColumn) {
+      // Task moved to different column - append to end
+      const targetColumnTasks = tasks
+        .filter(t => t.columnId === targetColumn.id && t.id !== activeId)
+        .sort((a, b) => a.position - b.position);
+      
+      // Calculate new position (append to end)
+      const maxPosition = targetColumnTasks.length > 0 
+        ? Math.max(...targetColumnTasks.map(t => t.position))
+        : 0;
+      const newPosition = maxPosition + 1;
+
+      try {
+        // Verify column still exists
+        const columnStillExists = columns.find(col => col.id === targetColumn.id);
+        if (!columnStillExists) {
+          console.warn('Target column was deleted during drag operation');
+          return;
+        }
+        
+        // Verify task still exists
+        const taskStillExists = tasks.find(t => t.id === activeTask.id);
+        if (!taskStillExists) {
+          console.warn('Task was deleted during drag operation');
+          return;
+        }
+
+        await updateTask(activeTask.id, {
+          columnId: targetColumn.id,
+          position: newPosition
+        });
+      } catch (error) {
+        console.error('Error moving task to column:', error);
+        // Error is already handled by TaskContext (rollback optimistic update)
+      }
+      return;
+    }
+
+    // Check if dropping on another task (task reordering)
+    const overTask = tasks.find(t => t.id === overId);
+    if (overTask) {
+      if (activeTask.columnId === overTask.columnId) {
+        // Same column reordering
+        // Get all tasks in column, sorted by position
+        const columnTasks = tasks
+          .filter(t => t.columnId === activeTask.columnId)
+          .sort((a, b) => a.position - b.position);
+        
+        const oldIndex = columnTasks.findIndex(t => t.id === activeId);
+        const newIndex = columnTasks.findIndex(t => t.id === overId);
+        
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+          return;
+        }
+
+        // Remove active task from array
+        const reorderedTasks = [...columnTasks];
+        const [movedTask] = reorderedTasks.splice(oldIndex, 1);
+        reorderedTasks.splice(newIndex, 0, movedTask);
+
+        // Recalculate positions (simple incrementing: 0, 1, 2, 3...)
+        const tasksToUpdate = reorderedTasks.map((task, index) => ({
+          id: task.id,
+          position: index
+        }));
+
+        // Update all affected tasks
+        try {
+          // Verify column and tasks still exist
+          const columnStillExists = columns.find(col => col.id === activeTask.columnId);
+          if (!columnStillExists) {
+            console.warn('Column was deleted during drag operation');
+            return;
+          }
+
+          await Promise.all(
+            tasksToUpdate.map(({ id, position }) =>
+              updateTask(id, { position })
+            )
+          );
+        } catch (error) {
+          console.error('Error reordering tasks:', error);
+          // Error is already handled by TaskContext (rollback optimistic update)
+        }
+      } else {
+        // Different column - move task to new column at overTask's position
+        const targetColumnTasks = tasks
+          .filter(t => t.columnId === overTask.columnId && t.id !== activeId)
+          .sort((a, b) => a.position - b.position);
+        
+        const insertIndex = targetColumnTasks.findIndex(t => t.id === overId);
+        
+        if (insertIndex === -1) {
+          return;
+        }
+
+        // Insert active task at insertIndex position
+        const reorderedTasks = [...targetColumnTasks];
+        reorderedTasks.splice(insertIndex, 0, activeTask);
+
+        // Recalculate positions for all tasks in target column
+        const tasksToUpdate = reorderedTasks.map((task, index) => ({
+          id: task.id,
+          columnId: overTask.columnId,
+          position: index
+        }));
+
+        try {
+          // Verify target column and tasks still exist
+          const columnStillExists = columns.find(col => col.id === overTask.columnId);
+          if (!columnStillExists) {
+            console.warn('Target column was deleted during drag operation');
+            return;
+          }
+
+          // Update all affected tasks
+          await Promise.all(
+            tasksToUpdate.map(({ id, columnId, position }) =>
+              updateTask(id, { columnId, position })
+            )
+          );
+        } catch (error) {
+          console.error('Error moving task between columns:', error);
+          // Error is already handled by TaskContext (rollback optimistic update)
+        }
+      }
     }
   };
 
@@ -158,7 +335,13 @@ export const KanbanBoard: React.FC = () => {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          // Drag cancelled - reset state
+          setIsDragging(false);
+        }}
       >
         <div className="max-w-full overflow-x-auto">
           <SortableContext

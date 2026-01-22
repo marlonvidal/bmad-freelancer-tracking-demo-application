@@ -1,0 +1,83 @@
+schema: 1
+story: "1.6"
+story_title: "Drag-and-Drop Task Movement"
+gate: CONCERNS
+status_reason: "Implementation is solid and production-ready, but missing prefers-reduced-motion support (AC requirement) and E2E test coverage. Performance optimizations present but not fully validated at scale."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-22T18:57:02Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "ACC-001"
+    severity: medium
+    finding: "Missing prefers-reduced-motion support for drag-and-drop animations (required by AC 15 and front-end spec)"
+    suggested_action: "Add @media (prefers-reduced-motion: reduce) query to disable or minimize animations in SortableTaskCard and Column components"
+    suggested_owner: "dev"
+  - id: "TEST-001"
+    severity: medium
+    finding: "E2E tests missing for drag-and-drop workflows"
+    suggested_action: "Add Playwright E2E tests for critical drag-and-drop user workflows (move task between columns, reorder within column, keyboard navigation)"
+    suggested_owner: "dev"
+  - id: "PERF-001"
+    severity: low
+    finding: "Performance testing with 100+ tasks not completed (unchecked in task list)"
+    suggested_action: "Complete performance testing with large datasets to validate 60fps requirement at scale"
+    suggested_owner: "dev"
+  - id: "PERF-002"
+    severity: low
+    finding: "React.memo not applied to TaskCard component (performance optimization opportunity)"
+    suggested_action: "Consider wrapping TaskCard with React.memo to reduce unnecessary re-renders during drag operations"
+    suggested_owner: "dev"
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 2, low: 2 }
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Add prefers-reduced-motion support (ACC-001) - Accessibility requirement"
+      - "Add E2E tests for drag-and-drop workflows (TEST-001) - Test coverage gap"
+      - "Complete performance testing with 100+ tasks (PERF-001) - Scale validation"
+      - "Consider React.memo optimization (PERF-002) - Performance enhancement"
+
+quality_score: 85
+expires: "2026-02-05T18:57:02Z"
+
+evidence:
+  tests_reviewed: 2
+  tests_passing: 2
+  tests_failing: 0
+  test_pass_rate: 100.0
+  risks_identified: 4
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 9, 10]
+    ac_gaps: [8]
+  note: "AC 8 (invalid drop zones) appears handled but not explicitly tested. AC 15 (prefers-reduced-motion) not implemented. Unit tests cover basic functionality but E2E tests missing."
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No security concerns. Client-side only operations with IndexedDB persistence. No input validation issues or data exposure risks."
+  performance:
+    status: CONCERNS
+    notes: "Performance optimizations present (will-change, CSS transforms, disabled transitions during drag) but not fully validated with 100+ tasks. React.memo optimization opportunity identified."
+  reliability:
+    status: PASS
+    notes: "Comprehensive error handling for edge cases (deleted columns/tasks during drag). Race condition prevention via isDragging state management. Optimistic updates with rollback capability."
+  maintainability:
+    status: PASS
+    notes: "Clean code structure with good separation of concerns. Well-documented components. Type-safe implementation. Testable architecture."
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Add prefers-reduced-motion support to SortableTaskCard and Column components"
+      refs: ["src/components/kanban/SortableTaskCard.tsx", "src/components/kanban/Column.tsx"]
+    - action: "Add E2E tests for drag-and-drop workflows using Playwright"
+      refs: ["tests/e2e/drag-and-drop.spec.ts"]
+    - action: "Complete performance testing with 100+ tasks to validate 60fps requirement"
+      refs: ["tests/performance/drag-and-drop-load.spec.ts"]
+    - action: "Consider adding React.memo to TaskCard component for performance optimization"
+      refs: ["src/components/kanban/TaskCard.tsx"]
+    - action: "Complete edge case testing (deleted column/task during drag scenarios)"
+      refs: ["tests/integration/drag-edge-cases.test.tsx"]

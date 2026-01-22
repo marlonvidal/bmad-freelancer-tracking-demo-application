@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Column as ColumnType } from '@/types/column';
 import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { EmptyColumnState } from './EmptyColumnState';
 import { ColumnHeader } from './ColumnHeader';
 import { DeleteColumnDialog } from './DeleteColumnDialog';
-import { TaskCard } from './TaskCard';
+import { SortableTaskCard } from './SortableTaskCard';
 import { TaskCreationModal } from '../task/TaskCreationModal';
 import { Task } from '@/types/task';
 
@@ -26,12 +28,18 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
-  // Get tasks for this column
+  // Get tasks for this column, sorted by position
   const tasks = React.useMemo(() => {
     return getTasksByColumnId(column.id);
   }, [getTasksByColumnId, column.id]);
 
   const taskCount = tasks.length;
+  const taskIds = tasks.map(task => task.id);
+
+  // Make column a drop zone
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: column.id,
+  });
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
@@ -61,9 +69,16 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
 
   return (
     <div
-      className="flex flex-col w-80 sm:w-80 md:w-80 lg:w-80 bg-white rounded-lg shadow-sm border border-gray-200 flex-shrink-0"
-      role="group"
-      aria-label={`${column.name} column`}
+      ref={setDroppableRef}
+      className={`
+        flex flex-col w-80 sm:w-80 md:w-80 lg:w-80 bg-white rounded-lg shadow-sm border flex-shrink-0
+        ${isOver ? 'border-blue-400 bg-blue-50/10 ring-2 ring-blue-200' : 'border-gray-200'}
+        transition-colors duration-150 ease-out
+      `}
+      role="region"
+      aria-label={`${column.name} column drop zone`}
+      aria-dropeffect="move"
+      data-testid={`column-drop-zone-${column.id}`}
     >
       {/* Column Header */}
       <ColumnHeader 
@@ -82,18 +97,20 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
         {tasks.length === 0 ? (
           <EmptyColumnState columnName={column.name} />
         ) : (
-          <div className="space-y-0">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => {
-                  // Future: Open task detail view
-                  console.log('Task clicked:', task.id);
-                }}
-              />
-            ))}
-          </div>
+          <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+            <div className="space-y-0">
+              {tasks.map((task) => (
+                <SortableTaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={() => {
+                    // Future: Open task detail view
+                    console.log('Task clicked:', task.id);
+                  }}
+                />
+              ))}
+            </div>
+          </SortableContext>
         )}
       </div>
 

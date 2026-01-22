@@ -2,10 +2,30 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Column } from '@/components/kanban/Column';
 import { ColumnProvider } from '@/contexts/ColumnContext';
+import { TaskProvider } from '@/contexts/TaskContext';
 import { ColumnRepository } from '@/services/data/repositories/ColumnRepository';
 import { TaskRepository } from '@/services/data/repositories/TaskRepository';
 import { db } from '@/services/data/database';
 import { Column as ColumnType } from '@/types/column';
+
+// Mock @dnd-kit hooks
+jest.mock('@dnd-kit/core', () => ({
+  useDroppable: jest.fn(() => ({
+    setNodeRef: jest.fn(),
+    isOver: false
+  }))
+}));
+
+jest.mock('@dnd-kit/sortable', () => ({
+  SortableContext: ({ children }: { children: React.ReactNode }) => <div data-testid="sortable-context">{children}</div>,
+  verticalListSortingStrategy: {}
+}));
+
+jest.mock('@/components/kanban/SortableTaskCard', () => ({
+  SortableTaskCard: ({ task }: { task: { id: string; title: string } }) => (
+    <div data-testid={`task-card-${task.id}`}>{task.title}</div>
+  )
+}));
 
 // Mock child components
 jest.mock('@/components/kanban/ColumnHeader', () => ({
@@ -55,7 +75,9 @@ describe('Column', () => {
   it('renders column with header and content', async () => {
     render(
       <ColumnProvider>
-        <Column column={testColumn} />
+        <TaskProvider>
+          <Column column={testColumn} />
+        </TaskProvider>
       </ColumnProvider>
     );
 
@@ -82,7 +104,9 @@ describe('Column', () => {
 
     render(
       <ColumnProvider>
-        <Column column={testColumn} />
+        <TaskProvider>
+          <Column column={testColumn} />
+        </TaskProvider>
       </ColumnProvider>
     );
 
@@ -94,7 +118,9 @@ describe('Column', () => {
   it('displays zero task count for empty column', async () => {
     render(
       <ColumnProvider>
-        <Column column={testColumn} />
+        <TaskProvider>
+          <Column column={testColumn} />
+        </TaskProvider>
       </ColumnProvider>
     );
 
@@ -106,7 +132,9 @@ describe('Column', () => {
   it('shows delete dialog when delete is clicked', async () => {
     render(
       <ColumnProvider>
-        <Column column={testColumn} />
+        <TaskProvider>
+          <Column column={testColumn} />
+        </TaskProvider>
       </ColumnProvider>
     );
 
@@ -123,12 +151,14 @@ describe('Column', () => {
   it('has proper ARIA attributes', () => {
     render(
       <ColumnProvider>
-        <Column column={testColumn} />
+        <TaskProvider>
+          <Column column={testColumn} />
+        </TaskProvider>
       </ColumnProvider>
     );
 
-    const columnGroup = screen.getByRole('group', { name: 'Test Column column' });
-    expect(columnGroup).toBeInTheDocument();
+    const columnRegion = screen.getByRole('region', { name: 'Test Column column drop zone' });
+    expect(columnRegion).toBeInTheDocument();
 
     const contentRegion = screen.getByRole('region', { name: 'Tasks in Test Column' });
     expect(contentRegion).toBeInTheDocument();
@@ -140,7 +170,9 @@ describe('Column', () => {
   it('updates task count when tasks are added', async () => {
     render(
       <ColumnProvider>
-        <Column column={testColumn} />
+        <TaskProvider>
+          <Column column={testColumn} />
+        </TaskProvider>
       </ColumnProvider>
     );
 
