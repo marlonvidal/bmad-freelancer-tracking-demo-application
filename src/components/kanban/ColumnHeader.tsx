@@ -6,6 +6,7 @@ interface ColumnHeaderProps {
   column: ColumnType;
   taskCount: number;
   onDelete: (columnId: string) => void;
+  onAddTask?: () => void;
 }
 
 /**
@@ -14,7 +15,7 @@ interface ColumnHeaderProps {
  * Displays column name (editable inline), task count badge, and column menu.
  * Column menu includes: Edit Name, Delete Column.
  */
-export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, onDelete }) => {
+export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, onDelete, onAddTask }) => {
   const { updateColumn, columns } = useColumnContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(column.name);
@@ -168,6 +169,31 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
         >
           {taskCount}
         </span>
+
+        {/* Add Task Button */}
+        {onAddTask && (
+          <button
+            onClick={onAddTask}
+            className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors"
+            aria-label={`Add task to ${column.name}`}
+            title={`Add task to ${column.name}`}
+          >
+            <svg 
+              className="w-5 h-5" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M12 4v16m8-8H4" 
+              />
+            </svg>
+          </button>
+        )}
 
         {/* Column Menu */}
         <div className="relative" ref={menuRef}>

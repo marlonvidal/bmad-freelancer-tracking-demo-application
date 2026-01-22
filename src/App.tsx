@@ -4,6 +4,7 @@ import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { UpdateNotification } from './components/common/UpdateNotification';
 import { ColumnProvider } from './contexts/ColumnContext';
+import { TaskProvider } from './contexts/TaskContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 
 export const App: React.FC = () => {
@@ -15,7 +16,9 @@ export const App: React.FC = () => {
       <OfflineIndicator isOnline={isOnline} />
       <UpdateNotification updateAvailable={updateAvailable} onUpdate={activateUpdate} onDismiss={dismissUpdate} />
       <ColumnProvider>
-        <KanbanBoard />
+        <TaskProvider>
+          <KanbanBoard />
+        </TaskProvider>
       </ColumnProvider>
     </>
   );

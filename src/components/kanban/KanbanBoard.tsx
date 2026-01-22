@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useColumnContext } from '@/contexts/ColumnContext';
+import { useTaskContext } from '@/contexts/TaskContext';
 import { SortableColumn } from './SortableColumn';
 import { AddColumnButton } from './AddColumnButton';
+import { TaskCreationModal } from '../task/TaskCreationModal';
+import { Task } from '@/types/task';
 
 /**
  * KanbanBoard - Main kanban board container component
@@ -15,6 +18,9 @@ import { AddColumnButton } from './AddColumnButton';
  */
 export const KanbanBoard: React.FC = () => {
   const { columns, loading, error, reorderColumns } = useColumnContext();
+  const { createTask } = useTaskContext();
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [initialColumnId, setInitialColumnId] = useState<string | undefined>(undefined);
 
   // Configure sensors for mouse and keyboard drag-and-drop
   const sensors = useSensors(
@@ -27,6 +33,32 @@ export const KanbanBoard: React.FC = () => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  /**
+   * Handle keyboard shortcut for creating task (Cmd/Ctrl + N or T)
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + N or T
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'n' || e.key === 't')) {
+        e.preventDefault();
+        setInitialColumnId(undefined);
+        setIsTaskModalOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  /**
+   * Handle task creation
+   */
+  const handleTaskSubmit = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await createTask(taskData);
+  };
 
   /**
    * Handle drag end event
@@ -93,6 +125,36 @@ export const KanbanBoard: React.FC = () => {
       role="region"
       aria-label="Kanban board"
     >
+      {/* Quick Add Task Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => {
+            setInitialColumnId(undefined);
+            setIsTaskModalOpen(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+          aria-label="Add new task (Cmd/Ctrl + N)"
+          title="Add new task (Cmd/Ctrl + N)"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span>Add Task</span>
+          <span className="text-xs opacity-75">(⌘N)</span>
+        </button>
+      </div>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -118,6 +180,14 @@ export const KanbanBoard: React.FC = () => {
           </SortableContext>
         </div>
       </DndContext>
+
+      {/* Task Creation Modal */}
+      <TaskCreationModal
+        isOpen={isTaskModalOpen}
+        initialColumnId={initialColumnId}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSubmit={handleTaskSubmit}
+      />
     </div>
   );
 };

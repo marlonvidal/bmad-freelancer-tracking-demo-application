@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Column as ColumnType } from '@/types/column';
-import { TaskRepository } from '@/services/data/repositories/TaskRepository';
 import { useColumnContext } from '@/contexts/ColumnContext';
+import { useTaskContext } from '@/contexts/TaskContext';
 import { EmptyColumnState } from './EmptyColumnState';
 import { ColumnHeader } from './ColumnHeader';
 import { DeleteColumnDialog } from './DeleteColumnDialog';
+import { TaskCard } from './TaskCard';
+import { TaskCreationModal } from '../task/TaskCreationModal';
+import { Task } from '@/types/task';
 
 interface ColumnProps {
   column: ColumnType;
@@ -19,25 +22,16 @@ interface ColumnProps {
  */
 export const Column: React.FC<ColumnProps> = ({ column }) => {
   const { deleteColumn } = useColumnContext();
-  const [taskCount, setTaskCount] = React.useState<number>(0);
-  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const { getTasksByColumnId, createTask } = useTaskContext();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
-  // Memoize TaskRepository to avoid creating new instances on every render
-  const taskRepository = React.useMemo(() => new TaskRepository(), []);
+  // Get tasks for this column
+  const tasks = React.useMemo(() => {
+    return getTasksByColumnId(column.id);
+  }, [getTasksByColumnId, column.id]);
 
-  // Load task count for this column
-  React.useEffect(() => {
-    const loadTaskCount = async () => {
-      try {
-        const tasks = await taskRepository.getByColumnId(column.id);
-        setTaskCount(tasks.length);
-      } catch (error) {
-        console.error('Error loading task count:', error);
-      }
-    };
-
-    loadTaskCount();
-  }, [column.id, taskRepository]);
+  const taskCount = tasks.length;
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
@@ -57,6 +51,14 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
     setShowDeleteDialog(false);
   };
 
+  const handleAddTask = () => {
+    setIsTaskModalOpen(true);
+  };
+
+  const handleTaskSubmit = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await createTask(taskData);
+  };
+
   return (
     <div
       className="flex flex-col w-80 sm:w-80 md:w-80 lg:w-80 bg-white rounded-lg shadow-sm border border-gray-200 flex-shrink-0"
@@ -68,6 +70,7 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
         column={column} 
         taskCount={taskCount} 
         onDelete={handleDeleteClick}
+        onAddTask={handleAddTask}
       />
 
       {/* Column Content */}
@@ -76,8 +79,22 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
         role="region"
         aria-label={`Tasks in ${column.name}`}
       >
-        {/* Empty state or tasks will go here */}
-        <EmptyColumnState columnName={column.name} />
+        {tasks.length === 0 ? (
+          <EmptyColumnState columnName={column.name} />
+        ) : (
+          <div className="space-y-0">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={() => {
+                  // Future: Open task detail view
+                  console.log('Task clicked:', task.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -87,6 +104,14 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
         isOpen={showDeleteDialog}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+
+      {/* Task Creation Modal */}
+      <TaskCreationModal
+        isOpen={isTaskModalOpen}
+        initialColumnId={column.id}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSubmit={handleTaskSubmit}
       />
     </div>
   );
