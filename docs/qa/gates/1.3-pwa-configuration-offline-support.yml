@@ -1,0 +1,120 @@
+schema: 1
+story: "1.3"
+story_title: "PWA Configuration and Offline Support"
+gate: CONCERNS
+status_reason: "Core functionality implemented well, but icon format mismatch prevents PWA installation and test coverage gaps exist for key features"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-01-22T00:00:00Z"
+
+waiver:
+  active: false
+
+top_issues:
+  - id: "ICON-001"
+    severity: high
+    finding: "Icon format mismatch - manifest.json references PNG files but actual icons are SVG format"
+    suggested_action: "Convert SVG icons to PNG format or update manifest.json to reference SVG files (if browser support allows)"
+    suggested_owner: dev
+    refs:
+      - "public/manifest.json:11,17"
+      - "public/icons/icon-192x192.svg"
+      - "public/icons/icon-512x512.svg"
+  
+  - id: "TEST-001"
+    severity: medium
+    finding: "Missing unit tests for useInstallPrompt hook"
+    suggested_action: "Add comprehensive unit tests following patterns from useOnlineStatus.test.ts"
+    suggested_owner: dev
+    refs:
+      - "src/hooks/useInstallPrompt.ts"
+      - "tests/unit/hooks/"
+  
+  - id: "TEST-002"
+    severity: medium
+    finding: "Missing unit tests for useServiceWorkerUpdate hook"
+    suggested_action: "Add comprehensive unit tests for update detection, activation, and dismiss functionality"
+    suggested_owner: dev
+    refs:
+      - "src/hooks/useServiceWorkerUpdate.ts"
+      - "tests/unit/hooks/"
+  
+  - id: "E2E-001"
+    severity: medium
+    finding: "Missing E2E tests for PWA installation flow (Tasks 10 incomplete)"
+    suggested_action: "Add Playwright E2E tests for beforeinstallprompt event, installation flow, and standalone mode verification"
+    suggested_owner: dev
+    refs:
+      - "tests/e2e/"
+      - "docs/stories/1.3.pwa-configuration-offline-support.md:99-105"
+  
+  - id: "E2E-002"
+    severity: medium
+    finding: "Missing E2E tests for offline functionality (Task 11 incomplete)"
+    suggested_action: "Add Playwright E2E tests for offline app loading, cache verification, and data operations while offline"
+    suggested_owner: dev
+    refs:
+      - "tests/e2e/"
+      - "docs/stories/1.3.pwa-configuration-offline-support.md:107-114"
+
+risk_summary:
+  totals:
+    critical: 0
+    high: 1
+    medium: 4
+    low: 0
+  recommendations:
+    must_fix:
+      - "Fix icon format mismatch to enable PWA installation"
+    monitor:
+      - "Complete E2E test coverage for PWA features"
+      - "Add unit tests for remaining hooks"
+
+quality_score: 70
+expires: "2025-02-05T00:00:00Z"
+
+evidence:
+  tests_reviewed: 4
+  risks_identified: 5
+  trace:
+    ac_covered: [1, 3, 8, 9]
+    ac_gaps: [2, 4, 5, 6, 7]
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Service Worker properly checks secure context, no security vulnerabilities identified"
+  performance:
+    status: PASS
+    notes: "Non-blocking Service Worker registration, appropriate cache strategies"
+  reliability:
+    status: CONCERNS
+    notes: "Missing E2E tests prevent full validation of offline functionality and PWA installation"
+  maintainability:
+    status: PASS
+    notes: "Well-structured code, good documentation, proper TypeScript typing"
+
+recommendations:
+  immediate:
+    - action: "Convert icon files from SVG to PNG format"
+      refs:
+        - "public/icons/icon-192x192.svg"
+        - "public/icons/icon-512x512.svg"
+        - "public/manifest.json"
+    - action: "Add unit tests for useInstallPrompt hook"
+      refs:
+        - "src/hooks/useInstallPrompt.ts"
+        - "tests/unit/hooks/useInstallPrompt.test.ts"
+    - action: "Add unit tests for useServiceWorkerUpdate hook"
+      refs:
+        - "src/hooks/useServiceWorkerUpdate.ts"
+        - "tests/unit/hooks/useServiceWorkerUpdate.test.ts"
+  future:
+    - action: "Add E2E tests for PWA installation flow"
+      refs:
+        - "tests/e2e/pwa-installation.spec.ts"
+    - action: "Add E2E tests for offline functionality"
+      refs:
+        - "tests/e2e/offline-functionality.spec.ts"
+    - action: "Complete manual verification tasks (Tasks 10, 11, 14)"
+      refs:
+        - "docs/stories/1.3.pwa-configuration-offline-support.md"

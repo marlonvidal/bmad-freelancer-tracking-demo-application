@@ -12,5 +12,5 @@ if (!global.crypto.randomUUID) {
 
 // Polyfill structuredClone for Jest test environment
 if (!global.structuredClone) {
-  global.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+  global.structuredClone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 }
