@@ -3,6 +3,8 @@ import { Task } from '@/types/task';
 import { Client } from '@/types/client';
 import { Project } from '@/types/project';
 import { Column } from '@/types/column';
+import { TimerState } from '@/types/timerState';
+import { TimeEntry } from '@/types/timeEntry';
 
 /**
  * TimeTrackingDB - IndexedDB database wrapper using Dexie.js
@@ -14,12 +16,18 @@ import { Column } from '@/types/column';
  * 
  * Database schema version 2:
  * - Added columns table: id, position
+ * 
+ * Database schema version 3:
+ * - Added timerState table: taskId (primary key, unique)
+ * - Added timeEntries table: id, taskId, startTime, endTime, [taskId+startTime]
  */
 class TimeTrackingDB extends Dexie {
   tasks!: Table<Task>;
   clients!: Table<Client>;
   projects!: Table<Project>;
   columns!: Table<Column>;
+  timerState!: Table<TimerState>;
+  timeEntries!: Table<TimeEntry>;
 
   constructor() {
     super('TimeTrackingDB');
@@ -35,6 +43,15 @@ class TimeTrackingDB extends Dexie {
       clients: 'id, name, createdAt',
       projects: 'id, clientId, name, [clientId+name]',
       columns: 'id, position'
+    });
+
+    this.version(3).stores({
+      tasks: 'id, columnId, clientId, projectId, createdAt, updatedAt, [clientId+projectId]',
+      clients: 'id, name, createdAt',
+      projects: 'id, clientId, name, [clientId+name]',
+      columns: 'id, position',
+      timerState: 'taskId',
+      timeEntries: 'id, taskId, startTime, endTime, [taskId+startTime]'
     });
   }
 }

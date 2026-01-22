@@ -1,5 +1,6 @@
 import React from 'react';
 import { Task } from '@/types/task';
+import { TimerControl } from '@/components/timer/TimerControl';
 
 interface TaskCardProps {
   task: Task;
@@ -109,13 +110,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         }
       }}
     >
-      {/* Task Title */}
-      <h3
-        id={`task-${task.id}-title`}
-        className="text-base font-semibold text-gray-900 mb-2 line-clamp-2"
-      >
-        {task.title}
-      </h3>
+      {/* Task Header with Timer Control */}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <h3
+          id={`task-${task.id}-title`}
+          className="text-base font-semibold text-gray-900 line-clamp-2 flex-1"
+        >
+          {task.title}
+        </h3>
+        <TimerControl taskId={task.id} />
+      </div>
 
       {/* Task Metadata */}
       <div className="flex items-center justify-between gap-2 flex-wrap">

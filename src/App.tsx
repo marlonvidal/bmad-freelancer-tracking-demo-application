@@ -5,6 +5,7 @@ import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { UpdateNotification } from './components/common/UpdateNotification';
 import { ColumnProvider } from './contexts/ColumnContext';
 import { TaskProvider } from './contexts/TaskContext';
+import { TimerProvider } from './contexts/TimerContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 
 export const App: React.FC = () => {
@@ -17,7 +18,9 @@ export const App: React.FC = () => {
       <UpdateNotification updateAvailable={updateAvailable} onUpdate={activateUpdate} onDismiss={dismissUpdate} />
       <ColumnProvider>
         <TaskProvider>
-          <KanbanBoard />
+          <TimerProvider>
+            <KanbanBoard />
+          </TimerProvider>
         </TaskProvider>
       </ColumnProvider>
     </>
