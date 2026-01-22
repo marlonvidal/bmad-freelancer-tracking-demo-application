@@ -36,7 +36,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -56,7 +56,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: (taskId: string) => taskId === 'task1',
       });
 
@@ -76,7 +76,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: (taskId: string) => taskId === 'task1',
       });
 
@@ -97,7 +97,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -121,7 +121,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -146,7 +146,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: (taskId: string) => taskId === 'task1',
       });
 
@@ -171,7 +171,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -200,7 +200,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -225,7 +225,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -249,7 +249,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -276,7 +276,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 
@@ -295,7 +295,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: (taskId: string) => taskId === 'task1',
       });
 
@@ -314,7 +314,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: (taskId: string) => taskId === 'task1',
       });
 
@@ -336,7 +336,7 @@ describe('TimerControl', () => {
         error: null,
         startTimer: mockStartTimer,
         stopTimer: mockStopTimer,
-        getElapsedTime: () => 0,
+        getElapsedTime: (_taskId: string) => 0,
         isActive: () => false,
       });
 

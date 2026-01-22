@@ -1,6 +1,7 @@
 import React from 'react';
 import { Task } from '@/types/task';
 import { TimerControl } from '@/components/timer/TimerControl';
+import { TimerDisplay } from '@/components/timer/TimerDisplay';
 
 interface TaskCardProps {
   task: Task;
@@ -132,6 +133,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         {task.dueDate && (
           <DueDateDisplay dueDate={task.dueDate} />
         )}
+      </div>
+
+      {/* Time Display */}
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <TimerDisplay taskId={task.id} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ story_title: "Timer Controls on Task Cards"
 gate: CONCERNS
 status_reason: "All functionality works correctly and all acceptance criteria are met. However, TimerService was created but not integrated - TimerContext duplicates business logic instead of delegating to TimerService. This is an architectural concern but not a blocking issue."
 reviewer: "Quinn (Test Architect)"
-updated: "2025-01-26T00:00:00Z"
+updated: "2025-01-27T00:00:00Z"
 
 waiver: { active: false }
 
@@ -27,7 +27,7 @@ risk_summary:
       - "TimerService integration - architectural improvement for better separation of concerns"
 
 evidence:
-  tests_reviewed: 42
+  tests_reviewed: 45
   risks_identified: 1
   trace:
     ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -54,4 +54,12 @@ recommendations:
       refs: ["src/contexts/TimerContext.tsx", "src/services/TimerService.ts"]
 
 quality_score: 90
-expires: "2025-02-09T00:00:00Z"
+expires: "2025-02-10T00:00:00Z"
+
+history:
+  - at: "2025-01-26T00:00:00Z"
+    gate: CONCERNS
+    note: "Initial review - TimerService integration concern identified"
+  - at: "2025-01-27T00:00:00Z"
+    gate: CONCERNS
+    note: "Re-review after Story 2.2 - Concern persists, test count increased to 45, no new issues"

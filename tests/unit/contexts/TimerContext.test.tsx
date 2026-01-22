@@ -280,6 +280,107 @@ describe('TimerContext', () => {
 
       jest.useRealTimers();
     });
+
+    it('getElapsedTime returns elapsed time for active task', async () => {
+      jest.useFakeTimers();
+      
+      let contextValue: any;
+      const onContextValue = (value: any) => {
+        contextValue = value;
+      };
+
+      render(
+        <TimerProvider>
+          <TestComponent onContextValue={onContextValue} />
+        </TimerProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      await act(async () => {
+        await contextValue.startTimer('task1');
+      });
+
+      // Initially 0
+      expect(contextValue.getElapsedTime('task1')).toBe(0);
+
+      // Advance time by 5 seconds
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      await waitFor(() => {
+        const elapsedTime = contextValue.getElapsedTime('task1');
+        expect(elapsedTime).toBeGreaterThanOrEqual(4); // At least 4 seconds (allowing for timing)
+      });
+
+      jest.useRealTimers();
+    });
+
+    it('getElapsedTime returns 0 for inactive task', async () => {
+      let contextValue: any;
+      const onContextValue = (value: any) => {
+        contextValue = value;
+      };
+
+      render(
+        <TimerProvider>
+          <TestComponent onContextValue={onContextValue} />
+        </TimerProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      // No active timer
+      expect(contextValue.getElapsedTime('task1')).toBe(0);
+      expect(contextValue.getElapsedTime('task2')).toBe(0);
+
+      // Start timer for task1
+      await act(async () => {
+        await contextValue.startTimer('task1');
+      });
+
+      // task1 should have elapsed time, task2 should be 0
+      expect(contextValue.getElapsedTime('task1')).toBeGreaterThanOrEqual(0);
+      expect(contextValue.getElapsedTime('task2')).toBe(0);
+    });
+
+    it('getElapsedTime returns 0 when timer stops', async () => {
+      let contextValue: any;
+      const onContextValue = (value: any) => {
+        contextValue = value;
+      };
+
+      render(
+        <TimerProvider>
+          <TestComponent onContextValue={onContextValue} />
+        </TimerProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      // Start timer
+      await act(async () => {
+        await contextValue.startTimer('task1');
+      });
+
+      // Should have some elapsed time
+      expect(contextValue.getElapsedTime('task1')).toBeGreaterThanOrEqual(0);
+
+      // Stop timer
+      await act(async () => {
+        await contextValue.stopTimer();
+      });
+
+      // Should return 0 after stopping
+      expect(contextValue.getElapsedTime('task1')).toBe(0);
+    });
   });
 
   describe('useTimerContext hook', () => {

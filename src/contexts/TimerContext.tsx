@@ -16,7 +16,7 @@ interface TimerContextState {
 interface TimerContextValue extends TimerContextState {
   startTimer: (taskId: string) => Promise<void>;
   stopTimer: () => Promise<TimeEntry | null>;
-  getElapsedTime: () => number;
+  getElapsedTime: (taskId: string) => number;
   isActive: (taskId: string) => boolean;
 }
 
@@ -204,11 +204,17 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
   }, [state.activeTaskId, state.status, timerStateRepository, stopTimer]);
 
   /**
-   * Get elapsed time for active timer (in seconds)
+   * Get elapsed time for a specific task (in seconds)
+   * Returns elapsed time if timer is active for the task, otherwise 0
+   * @param taskId - Task ID to get elapsed time for
+   * @returns Elapsed time in seconds, or 0 if timer is not active for this task
    */
-  const getElapsedTime = useCallback((): number => {
-    return state.elapsedTime;
-  }, [state.elapsedTime]);
+  const getElapsedTime = useCallback((taskId: string): number => {
+    if (state.activeTaskId === taskId && state.status === 'active') {
+      return state.elapsedTime;
+    }
+    return 0;
+  }, [state.activeTaskId, state.status, state.elapsedTime]);
 
   /**
    * Check if timer is active for a specific task

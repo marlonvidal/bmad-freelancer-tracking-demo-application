@@ -118,4 +118,20 @@ export class TimeEntryRepository {
       throw new Error(`Failed to delete time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  /**
+   * Get total time spent on a task (sum of all time entry durations)
+   * @param taskId - Task ID to calculate total time for
+   * @returns Promise resolving to total time in minutes
+   */
+  async getTotalTimeForTask(taskId: string): Promise<number> {
+    try {
+      const entries = await db.timeEntries.where('taskId').equals(taskId).toArray();
+      const totalMinutes = entries.reduce((sum, entry) => sum + entry.duration, 0);
+      return totalMinutes;
+    } catch (error) {
+      console.error('Error getting total time for task:', error);
+      throw new Error(`Failed to get total time for task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
