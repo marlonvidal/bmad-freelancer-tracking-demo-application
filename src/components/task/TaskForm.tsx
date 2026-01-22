@@ -5,6 +5,7 @@ import { Task } from '@/types/task';
 
 interface TaskFormProps {
   initialColumnId?: string;
+  task?: Task; // Optional, for edit mode
   onSubmit: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onCancel: () => void;
 }
@@ -13,6 +14,8 @@ interface FormErrors {
   title?: string;
   dueDate?: string;
   priority?: string;
+  estimateHours?: string;
+  estimateMinutes?: string;
 }
 
 /**
@@ -23,18 +26,44 @@ interface FormErrors {
  * Validates required fields and shows error messages.
  */
 export const TaskForm: React.FC<TaskFormProps> = ({ 
-  initialColumnId, 
+  initialColumnId,
+  task,
   onSubmit, 
   onCancel 
 }) => {
   const { columns } = useColumnContext();
   const { getTasksByColumnId } = useTaskContext();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState<string>('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(null);
-  const [tags, setTags] = useState<string>('');
-  const [columnId, setColumnId] = useState<string>(initialColumnId || '');
+  const isEditMode = !!task;
+  
+  // Calculate initial hours and minutes from timeEstimate if editing
+  const getInitialEstimateHours = () => {
+    if (task?.timeEstimate) {
+      return Math.floor(task.timeEstimate / 60);
+    }
+    return 0;
+  };
+  
+  const getInitialEstimateMinutes = () => {
+    if (task?.timeEstimate) {
+      return task.timeEstimate % 60;
+    }
+    return 0;
+  };
+  
+  const [title, setTitle] = useState(task?.title || '');
+  const [description, setDescription] = useState(task?.description || '');
+  const [dueDate, setDueDate] = useState<string>(() => {
+    if (task?.dueDate) {
+      const date = new Date(task.dueDate);
+      return date.toISOString().split('T')[0];
+    }
+    return '';
+  });
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(task?.priority || null);
+  const [tags, setTags] = useState<string>(task?.tags?.join(', ') || '');
+  const [columnId, setColumnId] = useState<string>(task?.columnId || initialColumnId || '');
+  const [estimateHours, setEstimateHours] = useState<number>(getInitialEstimateHours());
+  const [estimateMinutes, setEstimateMinutes] = useState<number>(getInitialEstimateMinutes());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +107,22 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       newErrors.priority = 'Priority must be low, medium, or high';
     }
 
+    // Validate estimate hours
+    if (estimateHours < 0) {
+      newErrors.estimateHours = 'Hours must be 0 or greater';
+    }
+    if (estimateHours > 999) {
+      newErrors.estimateHours = 'Hours must be 999 or less';
+    }
+
+    // Validate estimate minutes
+    if (estimateMinutes < 0) {
+      newErrors.estimateMinutes = 'Minutes must be 0 or greater';
+    }
+    if (estimateMinutes >= 60) {
+      newErrors.estimateMinutes = 'Minutes must be less than 60';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,12 +146,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
-      // Calculate next position in column
+      // Calculate next position in column (only for new tasks)
       const columnTasks = getTasksByColumnId(columnId);
-      const nextPosition = columnTasks.length;
+      const nextPosition = isEditMode ? task!.position : columnTasks.length;
 
       // Parse due date
       const dueDateObj = dueDate ? new Date(dueDate) : null;
+
+      // Convert estimate hours + minutes to total minutes
+      const totalEstimateMinutes = (estimateHours * 60) + estimateMinutes;
+      const timeEstimate = totalEstimateMinutes > 0 ? totalEstimateMinutes : null;
 
       // Create task data
       const taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -114,11 +163,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         description: description.trim() || undefined,
         columnId,
         position: nextPosition,
-        clientId: null,
-        projectId: null,
-        isBillable: false,
-        hourlyRate: null,
-        timeEstimate: null,
+        clientId: task?.clientId ?? null,
+        projectId: task?.projectId ?? null,
+        isBillable: task?.isBillable ?? false,
+        hourlyRate: task?.hourlyRate ?? null,
+        timeEstimate,
         dueDate: dueDateObj,
         priority,
         tags: tagsArray
@@ -155,7 +204,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       onSubmit={handleSubmit} 
       onKeyDown={handleKeyDown}
       className="space-y-4"
-      aria-label="Create new task"
+          aria-label={isEditMode ? "Edit task" : "Create new task"}
     >
       {/* Title - Required */}
       <div>
@@ -334,6 +383,97 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         </p>
       </div>
 
+      {/* Time Estimate - Optional */}
+      <div>
+        <label 
+          htmlFor="task-estimate-hours" 
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Time Estimate
+        </label>
+        <div className="flex gap-2 items-start">
+          <div className="flex-1">
+            <label 
+              htmlFor="task-estimate-hours" 
+              className="block text-xs text-gray-600 mb-1"
+            >
+              Hours
+            </label>
+            <input
+              id="task-estimate-hours"
+              type="number"
+              min="0"
+              max="999"
+              value={estimateHours}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10) || 0;
+                setEstimateHours(value);
+                if (errors.estimateHours) {
+                  setErrors(prev => ({ ...prev, estimateHours: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.estimateHours ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="0"
+              aria-label="Estimated hours"
+              aria-invalid={!!errors.estimateHours}
+              aria-describedby={errors.estimateHours ? 'estimate-hours-error' : undefined}
+            />
+            {errors.estimateHours && (
+              <p 
+                id="estimate-hours-error" 
+                className="mt-1 text-sm text-red-600" 
+                role="alert"
+              >
+                {errors.estimateHours}
+              </p>
+            )}
+          </div>
+          <div className="flex-1">
+            <label 
+              htmlFor="task-estimate-minutes" 
+              className="block text-xs text-gray-600 mb-1"
+            >
+              Minutes
+            </label>
+            <input
+              id="task-estimate-minutes"
+              type="number"
+              min="0"
+              max="59"
+              value={estimateMinutes}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10) || 0;
+                setEstimateMinutes(value);
+                if (errors.estimateMinutes) {
+                  setErrors(prev => ({ ...prev, estimateMinutes: undefined }));
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.estimateMinutes ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="0"
+              aria-label="Estimated minutes"
+              aria-invalid={!!errors.estimateMinutes}
+              aria-describedby={errors.estimateMinutes ? 'estimate-minutes-error' : undefined}
+            />
+            {errors.estimateMinutes && (
+              <p 
+                id="estimate-minutes-error" 
+                className="mt-1 text-sm text-red-600" 
+                role="alert"
+              >
+                {errors.estimateMinutes}
+              </p>
+            )}
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Leave both fields empty to clear the estimate
+        </p>
+      </div>
+
       {/* Form Actions */}
       <div className="flex justify-end gap-2 pt-4">
         <button
@@ -348,9 +488,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           type="submit"
           disabled={isSubmitting}
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Create task"
+          aria-label={isEditMode ? "Update task" : "Create task"}
         >
-          {isSubmitting ? 'Creating...' : 'Create Task'}
+          {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Task' : 'Create Task')}
         </button>
       </div>
     </form>

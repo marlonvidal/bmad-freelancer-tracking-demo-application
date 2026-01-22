@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Task } from '@/types/task';
 import { TimerControl } from '@/components/timer/TimerControl';
 import { TimerDisplay } from '@/components/timer/TimerDisplay';
+import { TimeEstimateDisplay } from '@/components/timer/TimeEstimateDisplay';
 import { TimeEntryModal } from '@/components/timer/TimeEntryModal';
 import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
 import { TimeEntry } from '@/types/timeEntry';
@@ -99,7 +100,36 @@ const DueDateDisplay: React.FC<{ dueDate: Date }> = ({ dueDate }) => {
 const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const [isTimeEntryModalOpen, setIsTimeEntryModalOpen] = useState(false);
   const [timerDisplayRefreshKey, setTimerDisplayRefreshKey] = useState(0);
-  const timeEntryRepository = new TimeEntryRepository();
+  const [totalTime, setTotalTime] = useState<number>(0);
+  const [isLoadingTotalTime, setIsLoadingTotalTime] = useState(true);
+  const timeEntryRepository = useMemo(() => new TimeEntryRepository(), []);
+
+  // Load total time for estimate comparison
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadTotalTime = async () => {
+      try {
+        setIsLoadingTotalTime(true);
+        const total = await timeEntryRepository.getTotalTimeForTask(task.id);
+        if (isMounted) {
+          setTotalTime(total);
+          setIsLoadingTotalTime(false);
+        }
+      } catch (err) {
+        console.error('Error loading total time for estimate:', err);
+        if (isMounted) {
+          setIsLoadingTotalTime(false);
+        }
+      }
+    };
+
+    loadTotalTime();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [task.id, timerDisplayRefreshKey, timeEntryRepository]);
 
   /**
    * Handle opening time entry modal
@@ -179,7 +209,7 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
 
         {/* Time Display */}
         <div className="mt-2 pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 mb-1">
             <TimerDisplay taskId={task.id} refreshKey={timerDisplayRefreshKey} />
             <button
               onClick={handleAddTimeClick}
@@ -203,6 +233,10 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
               </svg>
             </button>
           </div>
+          {/* Time Estimate Display */}
+          {!isLoadingTotalTime && (
+            <TimeEstimateDisplay task={task} totalTime={totalTime} />
+          )}
         </div>
       </div>
 
@@ -230,6 +264,7 @@ export const TaskCard = React.memo(TaskCardComponent, (prevProps, nextProps) => 
     prevProps.task.position === nextProps.task.position &&
     prevProps.task.priority === nextProps.task.priority &&
     prevProps.task.dueDate?.getTime() === nextProps.task.dueDate?.getTime() &&
+    prevProps.task.timeEstimate === nextProps.task.timeEstimate &&
     prevProps.onClick === nextProps.onClick
   );
 });

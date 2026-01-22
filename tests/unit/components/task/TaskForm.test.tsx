@@ -9,6 +9,7 @@ import { db } from '@/services/data/database';
 const renderTaskForm = (
   props: {
     initialColumnId?: string;
+    task?: any;
     onSubmit?: (taskData: any) => Promise<void>;
     onCancel?: () => void;
   } = {}
@@ -21,6 +22,7 @@ const renderTaskForm = (
       <TaskProvider>
         <TaskForm
           initialColumnId={props.initialColumnId}
+          task={props.task}
           onSubmit={props.onSubmit || defaultOnSubmit}
           onCancel={props.onCancel || defaultOnCancel}
         />
@@ -553,6 +555,159 @@ describe('TaskForm', () => {
 
       const callArgs = onSubmit.mock.calls[0][0];
       expect(callArgs.dueDate).toBe(null);
+    });
+  });
+
+  describe('time estimate handling', () => {
+    it('renders time estimate input fields', async () => {
+      renderTaskForm();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/time estimate/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/hours/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/minutes/i)).toBeInTheDocument();
+    });
+
+    it('converts hours and minutes to total minutes for storage', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const titleInput = screen.getByLabelText(/title/i);
+      const hoursInput = screen.getByLabelText(/hours/i);
+      const minutesInput = screen.getByLabelText(/minutes/i);
+
+      fireEvent.change(titleInput, { target: { value: 'Test Task' } });
+      fireEvent.change(hoursInput, { target: { value: '2' } });
+      fireEvent.change(minutesInput, { target: { value: '30' } });
+
+      const submitButton = screen.getByRole('button', { name: /create task/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+
+      const callArgs = onSubmit.mock.calls[0][0];
+      expect(callArgs.timeEstimate).toBe(150); // 2 hours * 60 + 30 minutes = 150 minutes
+    });
+
+    it('sets timeEstimate to null when both fields are 0', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const titleInput = screen.getByLabelText(/title/i);
+      fireEvent.change(titleInput, { target: { value: 'Test Task' } });
+
+      const submitButton = screen.getByRole('button', { name: /create task/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+
+      const callArgs = onSubmit.mock.calls[0][0];
+      expect(callArgs.timeEstimate).toBe(null);
+    });
+
+    it('has correct input constraints (min/max attributes)', async () => {
+      renderTaskForm();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const hoursInput = screen.getByLabelText(/hours/i) as HTMLInputElement;
+      const minutesInput = screen.getByLabelText(/minutes/i) as HTMLInputElement;
+
+      // Browser enforces these constraints via HTML attributes
+      expect(hoursInput).toHaveAttribute('min', '0');
+      expect(hoursInput).toHaveAttribute('max', '999');
+      expect(minutesInput).toHaveAttribute('min', '0');
+      expect(minutesInput).toHaveAttribute('max', '59');
+    });
+
+    it('pre-populates time estimate fields when editing existing task', async () => {
+      const task = {
+        id: 'task1',
+        title: 'Existing Task',
+        columnId: testColumnId,
+        position: 0,
+        timeEstimate: 90, // 1 hour 30 minutes
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        dueDate: null,
+        priority: null,
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      renderTaskForm({ task });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const hoursInput = screen.getByLabelText(/hours/i) as HTMLInputElement;
+      const minutesInput = screen.getByLabelText(/minutes/i) as HTMLInputElement;
+
+      expect(hoursInput.value).toBe('1'); // 90 minutes = 1 hour
+      expect(minutesInput.value).toBe('30'); // 90 minutes = 30 minutes remainder
+    });
+
+    it('allows clearing time estimate by setting both fields to 0', async () => {
+      const task = {
+        id: 'task1',
+        title: 'Existing Task',
+        columnId: testColumnId,
+        position: 0,
+        timeEstimate: 90,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        dueDate: null,
+        priority: null,
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ task, onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const hoursInput = screen.getByLabelText(/hours/i);
+      const minutesInput = screen.getByLabelText(/minutes/i);
+
+      fireEvent.change(hoursInput, { target: { value: '0' } });
+      fireEvent.change(minutesInput, { target: { value: '0' } });
+
+      const submitButton = screen.getByRole('button', { name: /update task/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+
+      const callArgs = onSubmit.mock.calls[0][0];
+      expect(callArgs.timeEstimate).toBe(null);
     });
   });
 });
