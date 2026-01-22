@@ -1,8 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode, useRef } from 'react';
 import { TimerState } from '@/types/timerState';
 import { TimeEntry } from '@/types/timeEntry';
 import { TimerStateRepository } from '@/services/data/repositories/TimerStateRepository';
 import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
+import { TimerService } from '@/services/TimerService';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { updateTabTitle, restoreTabTitle, initTabTitle } from '@/utils/tabTitle';
+import { TaskRepository } from '@/services/data/repositories/TaskRepository';
 
 interface TimerContextState {
   activeTaskId: string | null;
@@ -18,6 +22,8 @@ interface TimerContextValue extends TimerContextState {
   stopTimer: () => Promise<TimeEntry | null>;
   getElapsedTime: (taskId: string) => number;
   isActive: (taskId: string) => boolean;
+  backgroundTimerNotification: string | null;
+  clearBackgroundTimerNotification: () => void;
 }
 
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
@@ -42,16 +48,34 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     error: null
   });
 
+  const [backgroundTimerNotification, setBackgroundTimerNotification] = useState<string | null>(null);
+
   const timerStateRepository = useMemo(() => new TimerStateRepository(), []);
   const timeEntryRepository = useMemo(() => new TimeEntryRepository(), []);
+  const timerService = useMemo(() => new TimerService(), []);
+  const taskRepository = useMemo(() => new TaskRepository(), []);
+  
+  const { isVisible } = usePageVisibility();
+  
+  // Refs for cleanup and state tracking
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const periodicSaveRef = useRef<NodeJS.Timeout | null>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const wasVisibleRef = useRef<boolean>(true);
+  const recoveryCheckedRef = useRef<boolean>(false);
 
-  // Interval reference for elapsed time updates
-  const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Initialize tab title utility
+  useEffect(() => {
+    initTabTitle();
+    return () => {
+      restoreTabTitle();
+    };
+  }, []);
 
   /**
-   * Load timer state from IndexedDB
+   * Load timer state from IndexedDB with recovery logic
    */
-  const loadTimerState = useCallback(async () => {
+  const loadTimerState = useCallback(async (showRecoveryNotification = false) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       const timerState = await timerStateRepository.getActive();
@@ -61,6 +85,22 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
         const now = new Date();
         const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
         
+        // Check if timer state is very old (more than 24 hours) - might be stale
+        const hoursElapsed = elapsedSeconds / 3600;
+        if (hoursElapsed > 24) {
+          console.warn('Timer state is very old, clearing it');
+          await timerStateRepository.delete(timerState.taskId);
+          setState({
+            activeTaskId: null,
+            startTime: null,
+            elapsedTime: 0,
+            status: 'idle',
+            loading: false,
+            error: null
+          });
+          return;
+        }
+        
         setState({
           activeTaskId: timerState.taskId,
           startTime,
@@ -69,6 +109,14 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
           loading: false,
           error: null
         });
+
+        // Show recovery notification if requested
+        if (showRecoveryNotification) {
+          const minutes = Math.floor(elapsedSeconds / 60);
+          setBackgroundTimerNotification(
+            `Timer was running in background for ${minutes} minute${minutes !== 1 ? 's' : ''}`
+          );
+        }
       } else {
         setState({
           activeTaskId: null,
@@ -91,17 +139,147 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
   }, [timerStateRepository]);
 
   /**
-   * Initialize timer state on mount
+   * Initialize timer state on mount with recovery
    */
   useEffect(() => {
-    loadTimerState();
+    if (!recoveryCheckedRef.current) {
+      recoveryCheckedRef.current = true;
+      loadTimerState(true); // Show recovery notification
+    }
   }, [loadTimerState]);
 
   /**
-   * Update elapsed time every second when timer is active
+   * Set up BroadcastChannel for cross-tab synchronization
    */
   useEffect(() => {
-    if (state.status === 'active' && state.startTime) {
+    if (typeof BroadcastChannel === 'undefined') {
+      return; // Not supported
+    }
+
+    const channel = new BroadcastChannel('timer-sync');
+    broadcastChannelRef.current = channel;
+
+    channel.onmessage = (event) => {
+      const { type, taskId } = event.data;
+      
+      if (type === 'TIMER_STARTED') {
+        // Another tab started a timer - reload state
+        loadTimerState(false);
+      } else if (type === 'TIMER_STOPPED') {
+        // Another tab stopped a timer - reload state
+        loadTimerState(false);
+      }
+    };
+
+    return () => {
+      channel.close();
+    };
+  }, [loadTimerState]);
+
+  /**
+   * Handle tab visibility changes - sync with Service Worker
+   */
+  useEffect(() => {
+    if (!wasVisibleRef.current && isVisible && state.status === 'active') {
+      // Tab became active - sync with Service Worker
+      const syncWithServiceWorker = async () => {
+        try {
+          const swState = await timerService.requestTimerStateFromServiceWorker();
+          if (swState) {
+            const startTime = new Date(swState.startTime);
+            const now = new Date();
+            const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+            
+            setState(prev => ({
+              ...prev,
+              startTime,
+              elapsedTime: elapsedSeconds,
+            }));
+
+            // Show notification
+            const minutes = Math.floor(elapsedSeconds / 60);
+            setBackgroundTimerNotification(
+              `Timer was running in background for ${minutes} minute${minutes !== 1 ? 's' : ''}`
+            );
+          }
+        } catch (error) {
+          console.error('Error syncing with Service Worker:', error);
+          // Fallback to IndexedDB
+          loadTimerState(false);
+        }
+      };
+      
+      syncWithServiceWorker();
+    }
+    
+    wasVisibleRef.current = isVisible;
+  }, [isVisible, state.status, timerService, loadTimerState]);
+
+  /**
+   * Periodic timer state save (every 30 seconds)
+   */
+  useEffect(() => {
+    if (state.status === 'active' && state.activeTaskId && state.startTime) {
+      periodicSaveRef.current = setInterval(async () => {
+        try {
+          const timerState: TimerState = {
+            taskId: state.activeTaskId!,
+            startTime: state.startTime!,
+            lastUpdateTime: new Date(),
+            status: 'active',
+          };
+          await timerStateRepository.save(timerState);
+        } catch (error) {
+          console.error('Error saving timer state periodically:', error);
+          // Don't interrupt timer if save fails
+        }
+      }, 30000); // 30 seconds
+    } else {
+      if (periodicSaveRef.current) {
+        clearInterval(periodicSaveRef.current);
+        periodicSaveRef.current = null;
+      }
+    }
+
+    return () => {
+      if (periodicSaveRef.current) {
+        clearInterval(periodicSaveRef.current);
+      }
+    };
+  }, [state.status, state.activeTaskId, state.startTime, timerStateRepository]);
+
+  /**
+   * Beforeunload handler for graceful shutdown
+   */
+  useEffect(() => {
+    const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
+      if (state.status === 'active' && state.activeTaskId && state.startTime) {
+        try {
+          // Save current timer state
+          const timerState: TimerState = {
+            taskId: state.activeTaskId,
+            startTime: state.startTime,
+            lastUpdateTime: new Date(),
+            status: 'active',
+          };
+          await timerStateRepository.save(timerState);
+        } catch (error) {
+          console.error('Error saving timer state on beforeunload:', error);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [state.status, state.activeTaskId, state.startTime, timerStateRepository]);
+
+  /**
+   * Update elapsed time every second when timer is active (only when tab is visible)
+   */
+  useEffect(() => {
+    if (state.status === 'active' && state.startTime && isVisible) {
       intervalRef.current = setInterval(() => {
         const now = new Date();
         const elapsedSeconds = Math.floor((now.getTime() - state.startTime!.getTime()) / 1000);
@@ -119,7 +297,24 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [state.status, state.startTime]);
+  }, [state.status, state.startTime, isVisible]);
+
+  /**
+   * Update tab title and badge when timer state changes
+   */
+  useEffect(() => {
+    if (state.status === 'active' && state.activeTaskId) {
+      // Get task title for display
+      taskRepository.getById(state.activeTaskId).then(task => {
+        updateTabTitle(true, task?.title, state.elapsedTime);
+      }).catch(() => {
+        // Fallback to elapsed time only if task not found
+        updateTabTitle(true, undefined, state.elapsedTime);
+      });
+    } else {
+      updateTabTitle(false);
+    }
+  }, [state.status, state.activeTaskId, state.elapsedTime, taskRepository]);
 
   /**
    * Stop the active timer and create a time entry
@@ -144,6 +339,17 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
 
       // Delete timer state from IndexedDB
       await timerStateRepository.delete(state.activeTaskId);
+
+      // Notify Service Worker via TimerService
+      await timerService.stopTimer();
+
+      // Notify other tabs via BroadcastChannel
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage({
+          type: 'TIMER_STOPPED',
+          taskId: state.activeTaskId,
+        });
+      }
 
       // Update state
       setState({
@@ -186,6 +392,17 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
       // Save to IndexedDB
       await timerStateRepository.save(timerState);
 
+      // Notify Service Worker via TimerService
+      await timerService.startTimer(taskId);
+
+      // Notify other tabs via BroadcastChannel
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage({
+          type: 'TIMER_STARTED',
+          taskId,
+        });
+      }
+
       // Update state (optimistic update)
       setState({
         activeTaskId: taskId,
@@ -201,7 +418,7 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
       console.error('Error starting timer:', error);
       throw errorObj;
     }
-  }, [state.activeTaskId, state.status, timerStateRepository, stopTimer]);
+  }, [state.activeTaskId, state.status, timerStateRepository, timerService, stopTimer]);
 
   /**
    * Get elapsed time for a specific task (in seconds)
@@ -223,12 +440,18 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     return state.activeTaskId === taskId && state.status === 'active';
   }, [state.activeTaskId, state.status]);
 
+  const clearBackgroundTimerNotification = useCallback(() => {
+    setBackgroundTimerNotification(null);
+  }, []);
+
   const value: TimerContextValue = {
     ...state,
     startTimer,
     stopTimer,
     getElapsedTime,
-    isActive
+    isActive,
+    backgroundTimerNotification,
+    clearBackgroundTimerNotification
   };
 
   return (

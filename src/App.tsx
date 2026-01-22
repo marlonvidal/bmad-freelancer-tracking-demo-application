@@ -3,6 +3,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { UpdateNotification } from './components/common/UpdateNotification';
+import { BackgroundTimerIndicator } from './components/timer/BackgroundTimerIndicator';
 import { ColumnProvider } from './contexts/ColumnContext';
 import { TaskProvider } from './contexts/TaskContext';
 import { TimerProvider } from './contexts/TimerContext';
@@ -19,6 +20,7 @@ export const App: React.FC = () => {
       <ColumnProvider>
         <TaskProvider>
           <TimerProvider>
+            <BackgroundTimerIndicator />
             <KanbanBoard />
           </TimerProvider>
         </TaskProvider>

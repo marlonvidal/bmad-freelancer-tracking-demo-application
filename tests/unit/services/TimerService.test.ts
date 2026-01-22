@@ -185,4 +185,180 @@ describe('TimerService', () => {
     });
   });
 
+  describe('Service Worker Integration', () => {
+    let mockServiceWorker: {
+      ready: Promise<ServiceWorkerRegistration>;
+      controller: ServiceWorker | null;
+    };
+    let mockRegistration: ServiceWorkerRegistration;
+    let mockActiveWorker: ServiceWorker;
+    let postMessageSpy: jest.Mock;
+
+    beforeEach(() => {
+      // Mock Service Worker API
+      postMessageSpy = jest.fn();
+      mockActiveWorker = {
+        postMessage: postMessageSpy,
+      } as unknown as ServiceWorker;
+
+      mockRegistration = {
+        active: mockActiveWorker,
+      } as unknown as ServiceWorkerRegistration;
+
+      mockServiceWorker = {
+        ready: Promise.resolve(mockRegistration),
+        controller: mockActiveWorker,
+      };
+
+      // Mock navigator.serviceWorker
+      Object.defineProperty(navigator, 'serviceWorker', {
+        writable: true,
+        configurable: true,
+        value: mockServiceWorker,
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('sends TIMER_START message to Service Worker when available', async () => {
+      await timerService.startTimer('task1');
+
+      // Wait for async Service Worker message
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'TIMER_START',
+          taskId: 'task1',
+          startTime: expect.any(String),
+        })
+      );
+    });
+
+    it('sends TIMER_STOP message to Service Worker when stopping timer', async () => {
+      await timerService.startTimer('task1');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      postMessageSpy.mockClear();
+
+      await timerService.stopTimer();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'TIMER_STOP',
+          taskId: 'task1',
+        })
+      );
+    });
+
+    it('works gracefully when Service Worker is not available', async () => {
+      // Remove Service Worker support
+      Object.defineProperty(navigator, 'serviceWorker', {
+        writable: true,
+        configurable: true,
+        value: undefined,
+      });
+
+      // Should not throw and should still save to IndexedDB
+      const timerState = await timerService.startTimer('task1');
+
+      expect(timerState).toBeDefined();
+      expect(timerState.taskId).toBe('task1');
+
+      // Verify timer state was saved to IndexedDB
+      const savedState = await db.timerState.get('task1');
+      expect(savedState).toBeDefined();
+    });
+
+    it('works gracefully when Service Worker registration fails', async () => {
+      // Mock Service Worker that rejects
+      const rejectingPromise = Promise.reject(new Error('Registration failed'));
+      Object.defineProperty(navigator.serviceWorker, 'ready', {
+        writable: true,
+        configurable: true,
+        value: rejectingPromise,
+      });
+
+      // Catch the rejection to prevent unhandled promise rejection warning
+      rejectingPromise.catch(() => {
+        // Expected rejection
+      });
+
+      // Should not throw and should still save to IndexedDB
+      const timerState = await timerService.startTimer('task1');
+
+      expect(timerState).toBeDefined();
+      expect(timerState.taskId).toBe('task1');
+    });
+
+    it('requests timer state from Service Worker', async () => {
+      // Set up message listener mock
+      const messageHandler = jest.fn();
+      (navigator.serviceWorker as any).addEventListener = jest.fn((event, handler) => {
+        if (event === 'message') {
+          messageHandler.mockImplementation(handler);
+        }
+      });
+      (navigator.serviceWorker as any).removeEventListener = jest.fn();
+
+      // Mock response message
+      const mockState = {
+        taskId: 'task1',
+        startTime: new Date().toISOString(),
+        lastUpdateTime: new Date().toISOString(),
+        status: 'active',
+      };
+
+      // Start the request
+      const requestPromise = timerService.requestTimerStateFromServiceWorker();
+
+      // Simulate Service Worker response
+      setTimeout(() => {
+        messageHandler({
+          data: {
+            type: 'TIMER_STATE_RESPONSE',
+            state: mockState,
+          },
+        });
+      }, 10);
+
+      const result = await requestPromise;
+
+      expect(result).not.toBeNull();
+      expect(result?.taskId).toBe('task1');
+    });
+
+    it('falls back to IndexedDB when Service Worker request times out', async () => {
+      // Create timer state in IndexedDB
+      await timerService.startTimer('task1');
+
+      // Mock Service Worker that doesn't respond
+      (navigator.serviceWorker as any).addEventListener = jest.fn();
+      (navigator.serviceWorker as any).removeEventListener = jest.fn();
+
+      // Request should timeout and fallback to IndexedDB
+      const result = await timerService.requestTimerStateFromServiceWorker();
+
+      // Should get state from IndexedDB
+      expect(result).not.toBeNull();
+      expect(result?.taskId).toBe('task1');
+    });
+
+    it('handles Service Worker message errors gracefully', async () => {
+      // Mock postMessage that throws
+      postMessageSpy.mockImplementation(() => {
+        throw new Error('Message failed');
+      });
+
+      // Should not throw
+      await expect(timerService.startTimer('task1')).resolves.toBeDefined();
+
+      // Timer state should still be saved
+      const savedState = await db.timerState.get('task1');
+      expect(savedState).toBeDefined();
+    });
+  });
+
 });

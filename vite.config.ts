@@ -31,7 +31,10 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
         // Cache-first strategy for static assets (HTML, CSS, JS)
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         // Precaching for application shell
@@ -69,8 +72,6 @@ export default defineConfig({
         ],
         // Cache update strategy
         cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: false,
         // Cache versioning for invalidation
         cacheId: 'kanban-tracker-v1',
       },

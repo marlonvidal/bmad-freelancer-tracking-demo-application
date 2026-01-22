@@ -8,6 +8,7 @@ import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepos
  * 
  * Handles timer start/stop operations, enforces single active timer rule,
  * and manages time entry creation. Integrates with repositories for persistence.
+ * Communicates with Service Worker for background timer operation.
  */
 export class TimerService {
   private timerStateRepository: TimerStateRepository;
@@ -16,6 +17,45 @@ export class TimerService {
   constructor() {
     this.timerStateRepository = new TimerStateRepository();
     this.timeEntryRepository = new TimeEntryRepository();
+  }
+
+  /**
+   * Check if Service Worker is available and ready
+   */
+  private async isServiceWorkerAvailable(): Promise<boolean> {
+    if (!('serviceWorker' in navigator)) {
+      return false;
+    }
+    
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      return !!registration.active;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Send message to Service Worker
+   */
+  private async sendMessageToServiceWorker(message: {
+    type: string;
+    taskId?: string;
+    startTime?: string;
+  }): Promise<void> {
+    if (!(await this.isServiceWorkerAvailable())) {
+      return; // Silently fail - fallback to main thread only
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration.active) {
+        registration.active.postMessage(message);
+      }
+    } catch (error) {
+      console.warn('Failed to send message to Service Worker:', error);
+      // Don't throw - allow timer to work without Service Worker
+    }
   }
 
   /**
@@ -42,6 +82,13 @@ export class TimerService {
 
       // Save timer state to IndexedDB
       await this.timerStateRepository.save(timerState);
+
+      // Notify Service Worker to start background timer
+      await this.sendMessageToServiceWorker({
+        type: 'TIMER_START',
+        taskId,
+        startTime: now.toISOString(),
+      });
 
       return timerState;
     } catch (error) {
@@ -77,6 +124,12 @@ export class TimerService {
 
       // Delete timer state from IndexedDB
       await this.timerStateRepository.delete(activeTimer.taskId);
+
+      // Notify Service Worker to stop background timer
+      await this.sendMessageToServiceWorker({
+        type: 'TIMER_STOP',
+        taskId: activeTimer.taskId,
+      });
 
       return timeEntry;
     } catch (error) {
@@ -124,5 +177,37 @@ export class TimerService {
       console.error('Error getting active timer:', error);
       return null;
     }
+  }
+
+  /**
+   * Request timer state from Service Worker
+   * Used when tab becomes active to sync with background timer
+   * @returns Promise resolving to TimerState or null
+   */
+  async requestTimerStateFromServiceWorker(): Promise<TimerState | null> {
+    if (!(await this.isServiceWorkerAvailable())) {
+      // Fallback to IndexedDB directly
+      return this.getActiveTimer();
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        // Timeout after 1 second - fallback to IndexedDB
+        this.getActiveTimer().then(resolve);
+      }, 1000);
+
+      const messageHandler = (event: MessageEvent) => {
+        if (event.data?.type === 'TIMER_STATE_RESPONSE') {
+          clearTimeout(timeout);
+          navigator.serviceWorker.removeEventListener('message', messageHandler);
+          resolve(event.data.state || null);
+        }
+      };
+
+      navigator.serviceWorker.addEventListener('message', messageHandler);
+
+      // Send request
+      this.sendMessageToServiceWorker({ type: 'TIMER_STATE_REQUEST' });
+    });
   }
 }
