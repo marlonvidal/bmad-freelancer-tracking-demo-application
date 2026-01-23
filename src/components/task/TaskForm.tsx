@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
+import { ClientSelector } from '@/components/client/ClientSelector';
 import { Task } from '@/types/task';
 
 interface TaskFormProps {
@@ -62,6 +63,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(task?.priority || null);
   const [tags, setTags] = useState<string>(task?.tags?.join(', ') || '');
   const [columnId, setColumnId] = useState<string>(task?.columnId || initialColumnId || '');
+  const [clientId, setClientId] = useState<string | null>(task?.clientId ?? null);
   const [estimateHours, setEstimateHours] = useState<number>(getInitialEstimateHours());
   const [estimateMinutes, setEstimateMinutes] = useState<number>(getInitialEstimateMinutes());
   const [errors, setErrors] = useState<FormErrors>({});
@@ -163,7 +165,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         description: description.trim() || undefined,
         columnId,
         position: nextPosition,
-        clientId: task?.clientId ?? null,
+        clientId,
         projectId: task?.projectId ?? null,
         isBillable: task?.isBillable ?? false,
         hourlyRate: task?.hourlyRate ?? null,
@@ -283,6 +285,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Client Selection */}
+      <div>
+        <ClientSelector
+          value={clientId || undefined}
+          onChange={setClientId}
+        />
       </div>
 
       {/* Due Date - Optional */}

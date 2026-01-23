@@ -7,6 +7,7 @@ import { BackgroundTimerIndicator } from './components/timer/BackgroundTimerIndi
 import { ColumnProvider } from './contexts/ColumnContext';
 import { TaskProvider } from './contexts/TaskContext';
 import { TimerProvider } from './contexts/TimerContext';
+import { ClientProvider } from './contexts/ClientContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 
 export const App: React.FC = () => {
@@ -19,10 +20,12 @@ export const App: React.FC = () => {
       <UpdateNotification updateAvailable={updateAvailable} onUpdate={activateUpdate} onDismiss={dismissUpdate} />
       <ColumnProvider>
         <TaskProvider>
-          <TimerProvider>
-            <BackgroundTimerIndicator />
-            <KanbanBoard />
-          </TimerProvider>
+          <ClientProvider>
+            <TimerProvider>
+              <BackgroundTimerIndicator />
+              <KanbanBoard />
+            </TimerProvider>
+          </ClientProvider>
         </TaskProvider>
       </ColumnProvider>
     </>
