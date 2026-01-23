@@ -8,6 +8,7 @@ interface SettingsContextValue {
   error: Error | null;
   updateSettings: (updates: Partial<Omit<Settings, 'id'>>) => Promise<void>;
   getDefaultBillableStatus: () => boolean;
+  getDefaultHourlyRate: () => number | null;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -91,12 +92,24 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     return settings?.defaultBillableStatus ?? false;
   }, [settings]);
 
+  /**
+   * Get default hourly rate from settings
+   * @returns Default hourly rate (null if settings not loaded or not set)
+   * 
+   * Note: UI for configuring global default rate will be added in a future story.
+   * For now, this can be set programmatically via updateSettings({ defaultHourlyRate: value }).
+   */
+  const getDefaultHourlyRate = useCallback((): number | null => {
+    return settings?.defaultHourlyRate ?? null;
+  }, [settings]);
+
   const value: SettingsContextValue = {
     settings,
     loading,
     error,
     updateSettings,
-    getDefaultBillableStatus
+    getDefaultBillableStatus,
+    getDefaultHourlyRate
   };
 
   return (

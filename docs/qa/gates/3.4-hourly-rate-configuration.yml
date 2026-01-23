@@ -1,0 +1,68 @@
+schema: 1
+story: "3.4"
+story_title: "Hourly Rate Configuration"
+gate: CONCERNS
+status_reason: "Core functionality implemented with good unit test coverage, but integration tests deferred and async RevenueService method untested. Forward dependency on Story 3.5 for revenue calculation validation."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-23T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "TEST-001"
+    severity: medium
+    finding: "Integration tests (Task 14) deferred - missing end-to-end workflow validation"
+    suggested_action: "Add integration tests for complete rate configuration workflow before Story 3.5"
+    suggested_owner: "dev"
+  - id: "TEST-002"
+    severity: low
+    finding: "RevenueService.getEffectiveHourlyRateAsync() method has no test coverage (66.66% overall coverage)"
+    suggested_action: "Add unit tests for async method to reach 80%+ coverage target"
+    suggested_owner: "dev"
+  - id: "AC-009"
+    severity: low
+    finding: "AC 9 (rate changes update revenue calculations) will be validated in Story 3.5 - forward dependency"
+    suggested_action: "Ensure Story 3.5 validates this AC when revenue calculation is implemented"
+    suggested_owner: "sm"
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 1, low: 2 }
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Integration test coverage before Story 3.5"
+      - "RevenueService async method test coverage"
+
+quality_score: 85
+expires: "2026-02-06T00:00:00Z"
+
+evidence:
+  tests_reviewed: 31
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 10]
+    ac_gaps: [9]  # Will be validated in Story 3.5
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No security concerns - rate data is user-controlled, no authentication/authorization required for this feature"
+  performance:
+    status: PASS
+    notes: "Rate hierarchy calculation is O(1) - simple conditional checks. Effective rate preview uses useMemo for optimization."
+  reliability:
+    status: PASS
+    notes: "Proper null handling, error boundaries in async method, graceful degradation"
+  maintainability:
+    status: PASS
+    notes: "Clean code structure, good TypeScript types, well-documented, follows project patterns"
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Add integration tests for rate configuration workflow (Task 14)"
+      refs: ["docs/stories/3.4.hourly-rate-configuration.md:154-161"]
+    - action: "Add unit tests for RevenueService.getEffectiveHourlyRateAsync()"
+      refs: ["src/services/RevenueService.ts:87-116"]
+    - action: "Consider adding tests for ClientForm and ProjectForm rate inputs"
+      refs: ["tests/unit/components/task/TaskForm.test.tsx"]

@@ -10,6 +10,7 @@ interface ProjectFormProps {
 
 interface FormErrors {
   name?: string;
+  defaultHourlyRate?: string;
 }
 
 /**
@@ -33,6 +34,12 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   
   const [name, setName] = useState(project?.name || '');
   const [description, setDescription] = useState(project?.description || '');
+  const [defaultHourlyRate, setDefaultHourlyRate] = useState<string>(() => {
+    if (project?.defaultHourlyRate !== null && project?.defaultHourlyRate !== undefined) {
+      return project.defaultHourlyRate.toString();
+    }
+    return '';
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +60,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     // Name is required
     if (!name.trim()) {
       newErrors.name = 'Name is required';
+    }
+
+    // Validate default hourly rate if provided
+    if (defaultHourlyRate.trim()) {
+      const rate = parseFloat(defaultHourlyRate);
+      if (isNaN(rate) || rate < 0) {
+        newErrors.defaultHourlyRate = 'Rate must be 0 or greater';
+      }
     }
 
     // ClientId must be set (from props)
@@ -82,7 +97,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         clientId, // Use clientId from props (cannot be changed in edit mode)
         name: name.trim(),
         description: description.trim() || undefined,
-        defaultHourlyRate: project?.defaultHourlyRate ?? null
+        defaultHourlyRate: defaultHourlyRate.trim() ? parseFloat(defaultHourlyRate) : null
       };
 
       await onSubmit(projectData);
@@ -196,6 +211,51 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
           placeholder="Enter project description (optional)"
           aria-label="Project description"
         />
+      </div>
+
+      {/* Default Hourly Rate - Optional */}
+      <div>
+        <label 
+          htmlFor="project-hourly-rate" 
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Default Hourly Rate
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-2 text-gray-500">$</span>
+          <input
+            id="project-hourly-rate"
+            type="number"
+            min="0"
+            step="0.01"
+            value={defaultHourlyRate}
+            onChange={(e) => {
+              setDefaultHourlyRate(e.target.value);
+              if (errors.defaultHourlyRate) {
+                setErrors(prev => ({ ...prev, defaultHourlyRate: undefined }));
+              }
+            }}
+            className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              errors.defaultHourlyRate ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="0.00"
+            aria-label="Default hourly rate (optional - overrides client rate)"
+            aria-invalid={!!errors.defaultHourlyRate}
+            aria-describedby={errors.defaultHourlyRate ? 'rate-error' : 'rate-help'}
+          />
+        </div>
+        {errors.defaultHourlyRate && (
+          <p 
+            id="rate-error" 
+            className="mt-1 text-sm text-red-600" 
+            role="alert"
+          >
+            {errors.defaultHourlyRate}
+          </p>
+        )}
+        <p id="rate-help" className="mt-1 text-xs text-gray-500">
+          Optional - Default rate for project tasks (overrides client rate)
+        </p>
       </div>
 
       {/* Form Actions */}

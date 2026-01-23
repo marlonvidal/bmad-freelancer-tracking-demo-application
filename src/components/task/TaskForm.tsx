@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { useSettingsContext } from '@/contexts/SettingsContext';
+import { useClientContext } from '@/contexts/ClientContext';
+import { useProjectContext } from '@/contexts/ProjectContext';
 import { ClientSelector } from '@/components/client/ClientSelector';
 import { ProjectSelector } from '@/components/project/ProjectSelector';
+import { RateDisplay } from '@/components/common/RateDisplay';
+import { revenueService } from '@/services/RevenueService';
 import { Task } from '@/types/task';
 
 interface TaskFormProps {
@@ -21,6 +25,7 @@ interface FormErrors {
   priority?: string;
   estimateHours?: string;
   estimateMinutes?: string;
+  hourlyRate?: string;
 }
 
 /**
@@ -40,7 +45,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
 }) => {
   const { columns } = useColumnContext();
   const { getTasksByColumnId } = useTaskContext();
-  const { getDefaultBillableStatus } = useSettingsContext();
+  const { getDefaultBillableStatus, settings } = useSettingsContext();
+  const { getAllClients } = useClientContext();
+  const { getProjectsByClientId } = useProjectContext();
   const isEditMode = !!task;
   
   // Calculate initial hours and minutes from timeEstimate if editing
@@ -77,6 +84,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [isBillable, setIsBillable] = useState<boolean>(
     task?.isBillable ?? getDefaultBillableStatus()
   );
+  const [hourlyRate, setHourlyRate] = useState<string>(() => {
+    if (task?.hourlyRate !== null && task?.hourlyRate !== undefined) {
+      return task.hourlyRate.toString();
+    }
+    return '';
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +119,53 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       titleInputRef.current.focus();
     }
   }, []);
+
+  // Calculate effective rate preview
+  const effectiveRatePreview = useMemo(() => {
+    // Create a temporary task object with current form values for rate calculation
+    const tempTask: Task = {
+      id: task?.id || '',
+      title: title,
+      columnId: columnId,
+      position: task?.position || 0,
+      clientId: clientId,
+      projectId: projectId,
+      isBillable: isBillable,
+      hourlyRate: hourlyRate.trim() ? parseFloat(hourlyRate) : null,
+      timeEstimate: task?.timeEstimate || null,
+      dueDate: task?.dueDate || null,
+      priority: priority,
+      tags: task?.tags || [],
+      createdAt: task?.createdAt || new Date(),
+      updatedAt: task?.updatedAt || new Date()
+    };
+
+    // Get client and project from contexts
+    const currentClient = clientId ? getAllClients().find(c => c.id === clientId) : null;
+    const currentProject = projectId ? getProjectsByClientId(clientId || '').find(p => p.id === projectId) : null;
+
+    // Calculate effective rate
+    const effectiveRate = revenueService.getEffectiveHourlyRate(
+      tempTask,
+      currentClient || undefined,
+      currentProject || undefined,
+      settings || undefined
+    );
+
+    // Determine source
+    let source: 'task' | 'project' | 'client' | 'global' | undefined;
+    if (tempTask.hourlyRate !== null && tempTask.hourlyRate !== undefined) {
+      source = 'task';
+    } else if (currentProject?.defaultHourlyRate !== null && currentProject?.defaultHourlyRate !== undefined) {
+      source = 'project';
+    } else if (currentClient?.defaultHourlyRate !== null && currentClient?.defaultHourlyRate !== undefined) {
+      source = 'client';
+    } else if (settings?.defaultHourlyRate !== null && settings?.defaultHourlyRate !== undefined) {
+      source = 'global';
+    }
+
+    return { rate: effectiveRate, source };
+  }, [hourlyRate, clientId, projectId, getAllClients, getProjectsByClientId, settings, title, columnId, isBillable, priority, task]);
 
   /**
    * Validate form fields
@@ -145,6 +205,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     }
     if (estimateMinutes >= 60) {
       newErrors.estimateMinutes = 'Minutes must be less than 60';
+    }
+
+    // Validate hourly rate if provided
+    if (hourlyRate.trim()) {
+      const rate = parseFloat(hourlyRate);
+      if (isNaN(rate) || rate < 0) {
+        newErrors.hourlyRate = 'Rate must be 0 or greater';
+      }
     }
 
     setErrors(newErrors);
@@ -196,7 +264,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         clientId,
         projectId: projectId || null,
         isBillable,
-        hourlyRate: task?.hourlyRate ?? null,
+        hourlyRate: hourlyRate.trim() ? parseFloat(hourlyRate) : null,
         timeEstimate,
         dueDate: dueDateObj,
         priority,
@@ -458,6 +526,67 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         <p className="mt-1 text-xs text-gray-500 ml-6">
           Mark this task as billable to distinguish revenue-generating work
         </p>
+      </div>
+
+      {/* Hourly Rate - Optional */}
+      <div>
+        <label 
+          htmlFor="task-hourly-rate" 
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Hourly Rate
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-2 text-gray-500">$</span>
+          <input
+            id="task-hourly-rate"
+            type="number"
+            min="0"
+            step="0.01"
+            value={hourlyRate}
+            onChange={(e) => {
+              setHourlyRate(e.target.value);
+              if (errors.hourlyRate) {
+                setErrors(prev => ({ ...prev, hourlyRate: undefined }));
+              }
+            }}
+            className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              errors.hourlyRate ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="0.00"
+            aria-label="Hourly rate (optional - overrides client/project rate)"
+            aria-invalid={!!errors.hourlyRate}
+            aria-describedby={errors.hourlyRate ? 'hourly-rate-error' : 'hourly-rate-help'}
+          />
+        </div>
+        {errors.hourlyRate && (
+          <p 
+            id="hourly-rate-error" 
+            className="mt-1 text-sm text-red-600" 
+            role="alert"
+          >
+            {errors.hourlyRate}
+          </p>
+        )}
+        <p id="hourly-rate-help" className="mt-1 text-xs text-gray-500">
+          Optional - overrides client/project rate
+        </p>
+        {/* Effective Rate Preview */}
+        {(effectiveRatePreview.rate !== null || effectiveRatePreview.source) && (
+          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-blue-900 dark:text-blue-100">Effective rate:</span>
+              <RateDisplay
+                rate={effectiveRatePreview.rate}
+                showSource={true}
+                source={effectiveRatePreview.source}
+              />
+            </div>
+            <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+              Rate hierarchy: Task rate &gt; Project rate &gt; Client rate &gt; Global default
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Time Estimate - Optional */}
