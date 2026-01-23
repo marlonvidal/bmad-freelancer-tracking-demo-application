@@ -9,6 +9,7 @@ import { TaskProvider } from './contexts/TaskContext';
 import { TimerProvider } from './contexts/TimerContext';
 import { ClientProvider } from './contexts/ClientContext';
 import { ProjectProvider } from './contexts/ProjectContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 
 export const App: React.FC = () => {
@@ -19,18 +20,20 @@ export const App: React.FC = () => {
     <>
       <OfflineIndicator isOnline={isOnline} />
       <UpdateNotification updateAvailable={updateAvailable} onUpdate={activateUpdate} onDismiss={dismissUpdate} />
-      <ColumnProvider>
-        <TaskProvider>
-          <ClientProvider>
-            <ProjectProvider>
-              <TimerProvider>
-                <BackgroundTimerIndicator />
-                <KanbanBoard />
-              </TimerProvider>
-            </ProjectProvider>
-          </ClientProvider>
-        </TaskProvider>
-      </ColumnProvider>
+      <SettingsProvider>
+        <ColumnProvider>
+          <TaskProvider>
+            <ClientProvider>
+              <ProjectProvider>
+                <TimerProvider>
+                  <BackgroundTimerIndicator />
+                  <KanbanBoard />
+                </TimerProvider>
+              </ProjectProvider>
+            </ClientProvider>
+          </TaskProvider>
+        </ColumnProvider>
+      </SettingsProvider>
     </>
   );
 };

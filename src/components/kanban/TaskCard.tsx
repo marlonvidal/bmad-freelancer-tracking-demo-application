@@ -4,8 +4,10 @@ import { TimerControl } from '@/components/timer/TimerControl';
 import { TimerDisplay } from '@/components/timer/TimerDisplay';
 import { TimeEstimateDisplay } from '@/components/timer/TimeEstimateDisplay';
 import { TimeEntryModal } from '@/components/timer/TimeEntryModal';
+import { BillableIndicator } from '@/components/task/BillableIndicator';
 import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
 import { TimeEntry } from '@/types/timeEntry';
+import { useTaskContext } from '@/contexts/TaskContext';
 
 interface TaskCardProps {
   task: Task;
@@ -102,7 +104,9 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const [timerDisplayRefreshKey, setTimerDisplayRefreshKey] = useState(0);
   const [totalTime, setTotalTime] = useState<number>(0);
   const [isLoadingTotalTime, setIsLoadingTotalTime] = useState(true);
+  const [isTogglingBillable, setIsTogglingBillable] = useState(false);
   const timeEntryRepository = useMemo(() => new TimeEntryRepository(), []);
+  const { updateTask } = useTaskContext();
 
   // Load total time for estimate comparison
   useEffect(() => {
@@ -162,6 +166,37 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
     }
   };
 
+  /**
+   * Handle billable status toggle
+   */
+  const handleBillableToggle = async (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation(); // Prevent card click
+    
+    if (isTogglingBillable) {
+      return; // Prevent multiple simultaneous toggles
+    }
+
+    try {
+      setIsTogglingBillable(true);
+      await updateTask(task.id, { isBillable: !task.isBillable });
+    } catch (error) {
+      console.error('Error toggling billable status:', error);
+      // Error is handled by TaskContext, but we can show user feedback if needed
+    } finally {
+      setIsTogglingBillable(false);
+    }
+  };
+
+  /**
+   * Handle keyboard events for billable toggle
+   */
+  const handleBillableToggleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleBillableToggle(e);
+    }
+  };
+
   return (
     <>
       <div
@@ -196,10 +231,51 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
 
         {/* Task Metadata */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          {/* Priority Badge */}
-          {task.priority && (
-            <PriorityBadge priority={task.priority} />
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Priority Badge */}
+            {task.priority && (
+              <PriorityBadge priority={task.priority} />
+            )}
+
+            {/* Billable Indicator with Toggle */}
+            {task.isBillable ? (
+              <button
+                onClick={handleBillableToggle}
+                onKeyDown={handleBillableToggleKeyDown}
+                disabled={isTogglingBillable}
+                className="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+                aria-label="Mark as non-billable"
+                title="Click to mark as non-billable"
+              >
+                <BillableIndicator isBillable={true} />
+              </button>
+            ) : (
+              <button
+                onClick={handleBillableToggle}
+                onKeyDown={handleBillableToggleKeyDown}
+                disabled={isTogglingBillable}
+                className="px-2 py-1 text-xs font-medium text-gray-500 hover:text-green-600 rounded-full border border-gray-300 hover:border-green-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+                aria-label="Mark as billable"
+                title="Click to mark as billable"
+              >
+                <svg
+                  className="w-3 h-3 inline-block mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Mark Billable</span>
+              </button>
+            )}
+          </div>
 
           {/* Due Date */}
           {task.dueDate && (
@@ -265,6 +341,7 @@ export const TaskCard = React.memo(TaskCardComponent, (prevProps, nextProps) => 
     prevProps.task.priority === nextProps.task.priority &&
     prevProps.task.dueDate?.getTime() === nextProps.task.dueDate?.getTime() &&
     prevProps.task.timeEstimate === nextProps.task.timeEstimate &&
+    prevProps.task.isBillable === nextProps.task.isBillable &&
     prevProps.onClick === nextProps.onClick
   );
 });

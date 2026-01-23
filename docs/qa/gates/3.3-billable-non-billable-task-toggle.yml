@@ -1,0 +1,55 @@
+schema: 1
+story: "3.3"
+story_title: "Billable/Non-Billable Task Toggle"
+gate: CONCERNS
+status_reason: "Core implementation is solid with good test coverage, but integration tests are missing and some SettingsContext tests need attention. Non-blocking issues."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-23T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "TEST-001"
+    severity: medium
+    finding: "Integration tests for billable toggle workflow are missing (Task 14 incomplete)"
+    suggested_action: "Add integration tests covering complete workflow: create task with billable toggle → verify indicator → toggle from card → verify update"
+    suggested_owner: "dev"
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 1, low: 0 }
+  recommendations:
+    must_fix: []
+    monitor: []
+
+evidence:
+  tests_reviewed: 30
+  tests_passing: 30
+  tests_failing: 0
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 10]
+    ac_gaps: [9]  # AC 9 is explicitly marked as future enhancement
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No security concerns - billable status is user-controlled data with no sensitive operations"
+  performance:
+    status: PASS
+    notes: "Optimistic updates implemented correctly, singleton pattern for settings prevents unnecessary DB queries"
+  reliability:
+    status: PASS
+    notes: "All unit tests passing. Error handling properly tested and verified."
+  maintainability:
+    status: PASS
+    notes: "Code is well-structured, follows patterns, good separation of concerns, proper TypeScript typing"
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Add integration tests for complete billable toggle workflow"
+      refs: ["tests/integration/billable-toggle.test.tsx (to be created)"]
+    - action: "Consider adding E2E tests for billable toggle user journey"
+      refs: ["tests/e2e/ (future)"]
+
+quality_score: 90

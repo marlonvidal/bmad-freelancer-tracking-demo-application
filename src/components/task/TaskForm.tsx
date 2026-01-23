@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useSettingsContext } from '@/contexts/SettingsContext';
 import { ClientSelector } from '@/components/client/ClientSelector';
 import { ProjectSelector } from '@/components/project/ProjectSelector';
 import { Task } from '@/types/task';
@@ -39,6 +40,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
 }) => {
   const { columns } = useColumnContext();
   const { getTasksByColumnId } = useTaskContext();
+  const { getDefaultBillableStatus } = useSettingsContext();
   const isEditMode = !!task;
   
   // Calculate initial hours and minutes from timeEstimate if editing
@@ -72,6 +74,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [projectId, setProjectId] = useState<string | null>(task?.projectId ?? initialProjectId ?? null);
   const [estimateHours, setEstimateHours] = useState<number>(getInitialEstimateHours());
   const [estimateMinutes, setEstimateMinutes] = useState<number>(getInitialEstimateMinutes());
+  const [isBillable, setIsBillable] = useState<boolean>(
+    task?.isBillable ?? getDefaultBillableStatus()
+  );
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -190,7 +195,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         position: nextPosition,
         clientId,
         projectId: projectId || null,
-        isBillable: task?.isBillable ?? false,
+        isBillable,
         hourlyRate: task?.hourlyRate ?? null,
         timeEstimate,
         dueDate: dueDateObj,
@@ -428,6 +433,30 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         />
         <p className="mt-1 text-xs text-gray-500">
           Separate multiple tags with commas
+        </p>
+      </div>
+
+      {/* Billable Toggle - Optional */}
+      <div>
+        <label 
+          htmlFor="task-billable" 
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <input
+            id="task-billable"
+            type="checkbox"
+            checked={isBillable}
+            onChange={(e) => setIsBillable(e.target.checked)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            aria-label="Mark task as billable"
+            aria-checked={isBillable}
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Billable
+          </span>
+        </label>
+        <p className="mt-1 text-xs text-gray-500 ml-6">
+          Mark this task as billable to distinguish revenue-generating work
         </p>
       </div>
 

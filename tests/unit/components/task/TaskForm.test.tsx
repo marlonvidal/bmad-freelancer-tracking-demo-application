@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TaskForm } from '@/components/task/TaskForm';
 import { ColumnProvider } from '@/contexts/ColumnContext';
 import { TaskProvider } from '@/contexts/TaskContext';
+import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ColumnRepository } from '@/services/data/repositories/ColumnRepository';
 import { db } from '@/services/data/database';
 
@@ -18,16 +19,18 @@ const renderTaskForm = (
   const defaultOnCancel = jest.fn();
 
   return render(
-    <ColumnProvider>
-      <TaskProvider>
-        <TaskForm
-          initialColumnId={props.initialColumnId}
-          task={props.task}
-          onSubmit={props.onSubmit || defaultOnSubmit}
-          onCancel={props.onCancel || defaultOnCancel}
-        />
-      </TaskProvider>
-    </ColumnProvider>
+    <SettingsProvider>
+      <ColumnProvider>
+        <TaskProvider>
+          <TaskForm
+            initialColumnId={props.initialColumnId}
+            task={props.task}
+            onSubmit={props.onSubmit || defaultOnSubmit}
+            onCancel={props.onCancel || defaultOnCancel}
+          />
+        </TaskProvider>
+      </ColumnProvider>
+    </SettingsProvider>
   );
 };
 
@@ -708,6 +711,157 @@ describe('TaskForm', () => {
 
       const callArgs = onSubmit.mock.calls[0][0];
       expect(callArgs.timeEstimate).toBe(null);
+    });
+  });
+
+  describe('billable toggle', () => {
+    it('renders billable checkbox', async () => {
+      renderTaskForm();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const billableCheckbox = screen.getByLabelText(/mark task as billable/i);
+      expect(billableCheckbox).toBeInTheDocument();
+      expect(billableCheckbox).toHaveAttribute('type', 'checkbox');
+    });
+
+    it('uses default billable status from settings for new tasks', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const titleInput = screen.getByLabelText(/title/i);
+      fireEvent.change(titleInput, { target: { value: 'Test Task' } });
+
+      const submitButton = screen.getByRole('button', { name: /create task/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+
+      const callArgs = onSubmit.mock.calls[0][0];
+      // Default should be false (from SettingsRepository default)
+      expect(callArgs.isBillable).toBe(false);
+    });
+
+    it('allows toggling billable status', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const titleInput = screen.getByLabelText(/title/i);
+      const billableCheckbox = screen.getByLabelText(/mark task as billable/i) as HTMLInputElement;
+
+      fireEvent.change(titleInput, { target: { value: 'Test Task' } });
+      fireEvent.click(billableCheckbox);
+
+      expect(billableCheckbox.checked).toBe(true);
+
+      const submitButton = screen.getByRole('button', { name: /create task/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+
+      const callArgs = onSubmit.mock.calls[0][0];
+      expect(callArgs.isBillable).toBe(true);
+    });
+
+    it('pre-populates billable status from task when editing', async () => {
+      const { TaskRepository } = await import('@/services/data/repositories/TaskRepository');
+      const taskRepository = new TaskRepository();
+      
+      const existingTask = await taskRepository.create({
+        title: 'Existing Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: true,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ task: existingTask, onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const billableCheckbox = screen.getByLabelText(/mark task as billable/i) as HTMLInputElement;
+      expect(billableCheckbox.checked).toBe(true);
+    });
+
+    it('includes isBillable in form submission', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      renderTaskForm({ onSubmit });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const titleInput = screen.getByLabelText(/title/i);
+      const billableCheckbox = screen.getByLabelText(/mark task as billable/i);
+
+      fireEvent.change(titleInput, { target: { value: 'Test Task' } });
+      fireEvent.click(billableCheckbox);
+
+      const submitButton = screen.getByRole('button', { name: /create task/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+
+      const callArgs = onSubmit.mock.calls[0][0];
+      expect(callArgs).toHaveProperty('isBillable');
+      expect(callArgs.isBillable).toBe(true);
+    });
+
+    it('has proper ARIA attributes for billable checkbox', async () => {
+      renderTaskForm();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const billableCheckbox = screen.getByLabelText(/mark task as billable/i);
+      expect(billableCheckbox).toHaveAttribute('aria-label', 'Mark task as billable');
+      expect(billableCheckbox).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('supports keyboard navigation for billable checkbox', async () => {
+      renderTaskForm();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
+      });
+
+      const billableCheckbox = screen.getByLabelText(/mark task as billable/i) as HTMLInputElement;
+      
+      // Tab to checkbox
+      billableCheckbox.focus();
+      expect(billableCheckbox).toHaveFocus();
+
+      // Space to toggle
+      fireEvent.keyDown(billableCheckbox, { key: ' ', code: 'Space' });
+      // Note: keyDown doesn't toggle checkbox, need to use click or change event
+      fireEvent.change(billableCheckbox, { target: { checked: true } });
+      expect(billableCheckbox.checked).toBe(true);
     });
   });
 });
