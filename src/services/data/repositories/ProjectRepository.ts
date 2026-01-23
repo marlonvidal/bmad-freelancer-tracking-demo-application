@@ -1,5 +1,6 @@
 import { Project } from '@/types/project';
 import { db } from '../database';
+import { TaskRepository } from './TaskRepository';
 
 /**
  * ProjectRepository - Repository for Project CRUD operations
@@ -126,13 +127,26 @@ export class ProjectRepository {
 
   /**
    * Delete a project
+   * Checks if any tasks are assigned to the project before deletion.
+   * Throws an error if tasks are found with a descriptive message.
    * @param id - Project ID to delete
    * @returns Promise resolving when deletion is complete
+   * @throws Error if tasks are assigned to the project
    */
   async delete(id: string): Promise<void> {
     try {
+      // Check if any tasks are assigned to this project
+      const taskRepository = new TaskRepository();
+      const tasks = await taskRepository.getByProjectId(id);
+      if (tasks.length > 0) {
+        throw new Error(`Cannot delete project. ${tasks.length} task(s) are assigned to this project.`);
+      }
+
       await db.projects.delete(id);
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Cannot delete project')) {
+        throw error;
+      }
       console.error('Error deleting project:', error);
       throw new Error(`Failed to delete project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

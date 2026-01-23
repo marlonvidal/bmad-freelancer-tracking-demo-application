@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { ClientSelector } from '@/components/client/ClientSelector';
+import { ProjectSelector } from '@/components/project/ProjectSelector';
 import { Task } from '@/types/task';
 
 interface TaskFormProps {
   initialColumnId?: string;
+  initialClientId?: string | null; // Optional initial clientId for new tasks
+  initialProjectId?: string | null; // Optional initial projectId for new tasks
   task?: Task; // Optional, for edit mode
   onSubmit: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onCancel: () => void;
@@ -28,6 +31,8 @@ interface FormErrors {
  */
 export const TaskForm: React.FC<TaskFormProps> = ({ 
   initialColumnId,
+  initialClientId,
+  initialProjectId,
   task,
   onSubmit, 
   onCancel 
@@ -63,7 +68,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | null>(task?.priority || null);
   const [tags, setTags] = useState<string>(task?.tags?.join(', ') || '');
   const [columnId, setColumnId] = useState<string>(task?.columnId || initialColumnId || '');
-  const [clientId, setClientId] = useState<string | null>(task?.clientId ?? null);
+  const [clientId, setClientId] = useState<string | null>(task?.clientId ?? initialClientId ?? null);
+  const [projectId, setProjectId] = useState<string | null>(task?.projectId ?? initialProjectId ?? null);
   const [estimateHours, setEstimateHours] = useState<number>(getInitialEstimateHours());
   const [estimateMinutes, setEstimateMinutes] = useState<number>(getInitialEstimateMinutes());
   const [errors, setErrors] = useState<FormErrors>({});
@@ -77,6 +83,17 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       setColumnId(backlogColumn?.id || columns[0].id);
     }
   }, [columns, columnId]);
+
+  // Reset projectId when clientId changes (projects are client-scoped)
+  useEffect(() => {
+    if (clientId === null) {
+      setProjectId(null);
+    } else if (projectId) {
+      // Validate that selected project belongs to selected client
+      // This will be handled by ProjectSelector, but we can also check here
+      // For now, ProjectSelector will handle this automatically
+    }
+  }, [clientId, projectId]);
 
   // Auto-focus title input on mount
   useEffect(() => {
@@ -159,6 +176,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       const totalEstimateMinutes = (estimateHours * 60) + estimateMinutes;
       const timeEstimate = totalEstimateMinutes > 0 ? totalEstimateMinutes : null;
 
+      // Validate projectId requires clientId
+      if (projectId && !clientId) {
+        // This shouldn't happen due to ProjectSelector being disabled, but validate anyway
+        throw new Error('Project requires a client to be selected');
+      }
+
       // Create task data
       const taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
         title: title.trim(),
@@ -166,7 +189,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         columnId,
         position: nextPosition,
         clientId,
-        projectId: task?.projectId ?? null,
+        projectId: projectId || null,
         isBillable: task?.isBillable ?? false,
         hourlyRate: task?.hourlyRate ?? null,
         timeEstimate,
@@ -291,7 +314,22 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       <div>
         <ClientSelector
           value={clientId || undefined}
-          onChange={setClientId}
+          onChange={(newClientId) => {
+            setClientId(newClientId);
+            // Reset projectId when client changes (projects are client-scoped)
+            if (newClientId !== clientId) {
+              setProjectId(null);
+            }
+          }}
+        />
+      </div>
+
+      {/* Project Selection */}
+      <div>
+        <ProjectSelector
+          clientId={clientId}
+          value={projectId || undefined}
+          onChange={setProjectId}
         />
       </div>
 
