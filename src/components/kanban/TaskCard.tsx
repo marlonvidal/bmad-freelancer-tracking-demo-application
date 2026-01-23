@@ -5,9 +5,16 @@ import { TimerDisplay } from '@/components/timer/TimerDisplay';
 import { TimeEstimateDisplay } from '@/components/timer/TimeEstimateDisplay';
 import { TimeEntryModal } from '@/components/timer/TimeEntryModal';
 import { BillableIndicator } from '@/components/task/BillableIndicator';
+import { RevenueDisplay } from '@/components/task/RevenueDisplay';
 import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
 import { TimeEntry } from '@/types/timeEntry';
+import { TimerState } from '@/types/timerState';
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useClientContext } from '@/contexts/ClientContext';
+import { useProjectContext } from '@/contexts/ProjectContext';
+import { useSettingsContext } from '@/contexts/SettingsContext';
+import { useTimerContext } from '@/contexts/TimerContext';
+import { revenueService } from '@/services/RevenueService';
 
 interface TaskCardProps {
   task: Task;
@@ -105,8 +112,15 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const [totalTime, setTotalTime] = useState<number>(0);
   const [isLoadingTotalTime, setIsLoadingTotalTime] = useState(true);
   const [isTogglingBillable, setIsTogglingBillable] = useState(false);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(true);
+  const [activeTimer, setActiveTimer] = useState<TimerState | null>(null);
   const timeEntryRepository = useMemo(() => new TimeEntryRepository(), []);
   const { updateTask } = useTaskContext();
+  const { getAllClients } = useClientContext();
+  const { getAllProjects } = useProjectContext();
+  const { settings } = useSettingsContext();
+  const { isActive: isTimerActive, activeTaskId, startTime, status: timerStatus, elapsedTime } = useTimerContext();
 
   // Load total time for estimate comparison
   useEffect(() => {
@@ -135,6 +149,77 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
     };
   }, [task.id, timerDisplayRefreshKey, timeEntryRepository]);
 
+  // Load time entries for revenue calculation
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadTimeEntries = async () => {
+      try {
+        setIsLoadingTimeEntries(true);
+        const entries = await timeEntryRepository.getByTaskId(task.id);
+        if (isMounted) {
+          setTimeEntries(entries);
+          setIsLoadingTimeEntries(false);
+        }
+      } catch (err) {
+        console.error('Error loading time entries:', err);
+        if (isMounted) {
+          setIsLoadingTimeEntries(false);
+        }
+      }
+    };
+
+    loadTimeEntries();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [task.id, timerDisplayRefreshKey, timeEntryRepository]);
+
+  // Create active timer state from TimerContext for revenue calculation
+  // This updates in real-time as the timer runs (elapsedTime changes every second)
+  useEffect(() => {
+    if (isTimerActive(task.id) && activeTaskId === task.id && startTime && timerStatus === 'active') {
+      // Create TimerState object from TimerContext for calculateTaskRevenue
+      // Use elapsedTime in dependency to trigger updates every second
+      const timerState: TimerState = {
+        taskId: task.id,
+        startTime: startTime,
+        lastUpdateTime: new Date(),
+        status: 'active'
+      };
+      setActiveTimer(timerState);
+    } else {
+      setActiveTimer(null);
+    }
+  }, [task.id, isTimerActive, activeTaskId, startTime, timerStatus, elapsedTime]);
+
+  // Calculate revenue using useMemo for performance
+  const revenue = useMemo(() => {
+    if (!task.isBillable) {
+      return null;
+    }
+
+    try {
+      // Get client and project from contexts
+      const client = task.clientId ? getAllClients().find(c => c.id === task.clientId) : null;
+      const project = task.projectId ? getAllProjects().find(p => p.id === task.projectId) : null;
+
+      // Calculate revenue
+      return revenueService.calculateTaskRevenue(
+        task,
+        timeEntries,
+        activeTimer,
+        client || undefined,
+        project || undefined,
+        settings || undefined
+      );
+    } catch (error) {
+      console.error('Error calculating revenue:', error);
+      return null;
+    }
+  }, [task, timeEntries, activeTimer, getAllClients, getAllProjects, settings]);
+
   /**
    * Handle opening time entry modal
    */
@@ -148,7 +233,7 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
    */
   const handleCloseModal = () => {
     setIsTimeEntryModalOpen(false);
-    // Refresh TimerDisplay in case entries were edited/deleted in modal
+    // Refresh TimerDisplay and revenue in case entries were edited/deleted in modal
     setTimerDisplayRefreshKey(prev => prev + 1);
   };
 
@@ -313,6 +398,12 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
           {!isLoadingTotalTime && (
             <TimeEstimateDisplay task={task} totalTime={totalTime} />
           )}
+          {/* Revenue Display */}
+          {!isLoadingTimeEntries && task.isBillable && (
+            <div className="mt-1">
+              <RevenueDisplay revenue={revenue} isBillable={task.isBillable} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -342,6 +433,9 @@ export const TaskCard = React.memo(TaskCardComponent, (prevProps, nextProps) => 
     prevProps.task.dueDate?.getTime() === nextProps.task.dueDate?.getTime() &&
     prevProps.task.timeEstimate === nextProps.task.timeEstimate &&
     prevProps.task.isBillable === nextProps.task.isBillable &&
+    prevProps.task.hourlyRate === nextProps.task.hourlyRate &&
+    prevProps.task.clientId === nextProps.task.clientId &&
+    prevProps.task.projectId === nextProps.task.projectId &&
     prevProps.onClick === nextProps.onClick
   );
 });

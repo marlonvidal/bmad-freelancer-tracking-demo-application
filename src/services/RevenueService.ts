@@ -2,6 +2,8 @@ import { Task } from '@/types/task';
 import { Client } from '@/types/client';
 import { Project } from '@/types/project';
 import { Settings } from '@/types/settings';
+import { TimeEntry } from '@/types/timeEntry';
+import { TimerState } from '@/types/timerState';
 import { ClientRepository } from './data/repositories/ClientRepository';
 import { ProjectRepository } from './data/repositories/ProjectRepository';
 import { SettingsRepository } from './data/repositories/SettingsRepository';
@@ -113,6 +115,77 @@ export class RevenueService {
       // Fallback to synchronous method with available data
       return this.getEffectiveHourlyRate(task, client, project, settings);
     }
+  }
+
+  /**
+   * Calculate revenue for a task based on billable hours and effective hourly rate
+   * 
+   * Revenue calculation formula:
+   * - Total billable hours = Sum of all TimeEntry.duration (in minutes) + active timer elapsed time (in minutes)
+   * - Convert to hours: billableHours = totalMinutes / 60
+   * - Revenue = billableHours × effectiveHourlyRate
+   * 
+   * @param task - The task to calculate revenue for
+   * @param timeEntries - Array of time entries for the task
+   * @param activeTimer - Optional active timer state (if timer is running for this task)
+   * @param client - Optional client object (if not provided, will need to be fetched)
+   * @param project - Optional project object (if not provided, will need to be fetched)
+   * @param settings - Optional settings object (if not provided, will need to be fetched)
+   * @returns Calculated revenue amount, or null if task is not billable or no rate is set, or 0 if billable hours are 0
+   */
+  calculateTaskRevenue(
+    task: Task,
+    timeEntries: TimeEntry[],
+    activeTimer?: TimerState | null,
+    client?: Client | null,
+    project?: Project | null,
+    settings?: Settings | null
+  ): number | null {
+    // Return null if task is not billable
+    if (!task.isBillable) {
+      return null;
+    }
+
+    // Get effective hourly rate
+    const effectiveRate = this.getEffectiveHourlyRate(task, client, project, settings);
+    
+    // Return null if no effective rate is set
+    if (effectiveRate === null) {
+      return null;
+    }
+
+    // Calculate total billable minutes
+    let totalMinutes = 0;
+    
+    // Sum all time entry durations
+    for (const entry of timeEntries) {
+      totalMinutes += entry.duration;
+    }
+
+    // Add active timer elapsed time if timer is active for this task
+    if (activeTimer && activeTimer.taskId === task.id && activeTimer.status === 'active') {
+      const now = new Date();
+      const startTime = new Date(activeTimer.startTime);
+      const elapsedMinutes = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
+      // Only add if elapsed time is positive (handle edge cases)
+      if (elapsedMinutes > 0) {
+        totalMinutes += elapsedMinutes;
+      }
+    }
+
+    // Return 0 if billable hours are 0 (even if rate is set)
+    if (totalMinutes === 0) {
+      return 0;
+    }
+
+    // Convert minutes to hours
+    const billableHours = totalMinutes / 60;
+
+    // Calculate revenue: billableHours × effectiveRate
+    // Use proper rounding for currency (round to 2 decimal places)
+    const revenue = Math.round(billableHours * effectiveRate * 100) / 100;
+
+    return revenue;
   }
 }
 

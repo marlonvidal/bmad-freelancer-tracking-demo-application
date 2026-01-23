@@ -5,7 +5,10 @@ import { Task } from '@/types/task';
 import { TaskProvider } from '@/contexts/TaskContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { TimerProvider } from '@/contexts/TimerContext';
+import { ClientProvider } from '@/contexts/ClientContext';
+import { ProjectProvider } from '@/contexts/ProjectContext';
 import { TaskRepository } from '@/services/data/repositories/TaskRepository';
+import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepository';
 import { db } from '@/services/data/database';
 
 const createMockTask = (overrides: Partial<Task> = {}): Task => {
@@ -33,11 +36,15 @@ const createMockTask = (overrides: Partial<Task> = {}): Task => {
 const renderTaskCard = (task: Task, props: { onClick?: () => void } = {}) => {
   return render(
     <SettingsProvider>
-      <TaskProvider>
-        <TimerProvider>
-          <TaskCard task={task} onClick={props.onClick} />
-        </TimerProvider>
-      </TaskProvider>
+      <ClientProvider>
+        <ProjectProvider>
+          <TaskProvider>
+            <TimerProvider>
+              <TaskCard task={task} onClick={props.onClick} />
+            </TimerProvider>
+          </TaskProvider>
+        </ProjectProvider>
+      </ClientProvider>
     </SettingsProvider>
   );
 };
@@ -465,10 +472,15 @@ describe('TaskCard', () => {
       const toggleButton = screen.getByLabelText('Mark as non-billable');
       fireEvent.click(toggleButton);
 
-      await waitFor(() => {
+      await waitFor(async () => {
         const updatedTask = await taskRepository.getById(task.id);
-        expect(updatedTask?.isBillable).toBe(false);
+        if (updatedTask?.isBillable !== false) {
+          throw new Error('Task isBillable not updated yet');
+        }
       });
+      
+      const updatedTask = await taskRepository.getById(task.id);
+      expect(updatedTask?.isBillable).toBe(false);
     });
 
     it('toggles billable status when clicking "Mark Billable" button', async () => {
@@ -492,10 +504,15 @@ describe('TaskCard', () => {
       const toggleButton = screen.getByLabelText('Mark as billable');
       fireEvent.click(toggleButton);
 
-      await waitFor(() => {
+      await waitFor(async () => {
         const updatedTask = await taskRepository.getById(task.id);
-        expect(updatedTask?.isBillable).toBe(true);
+        if (updatedTask?.isBillable !== true) {
+          throw new Error('Task isBillable not updated yet');
+        }
       });
+      
+      const updatedTask = await taskRepository.getById(task.id);
+      expect(updatedTask?.isBillable).toBe(true);
     });
 
     it('prevents card click when toggling billable status', async () => {
@@ -534,10 +551,15 @@ describe('TaskCard', () => {
       // Press Enter to toggle
       fireEvent.keyDown(toggleButton, { key: 'Enter', code: 'Enter' });
 
-      await waitFor(() => {
+      await waitFor(async () => {
         const updatedTask = await taskRepository.getById(task.id);
-        expect(updatedTask?.isBillable).toBe(true);
+        if (updatedTask?.isBillable !== true) {
+          throw new Error('Task isBillable not updated yet');
+        }
       });
+      
+      const updatedTask = await taskRepository.getById(task.id);
+      expect(updatedTask?.isBillable).toBe(true);
     });
 
     it('has proper ARIA labels for toggle buttons', () => {
@@ -561,6 +583,163 @@ describe('TaskCard', () => {
 
       const markBillableButton = screen.getByLabelText('Mark as billable');
       expect(markBillableButton).toBeInTheDocument();
+    });
+  });
+
+  describe('revenue display', () => {
+    beforeEach(async () => {
+      await db.clients.clear();
+      await db.projects.clear();
+      await db.settings.clear();
+    });
+
+    it('renders RevenueDisplay when task is billable and rate is set', async () => {
+      const task = createMockTask({ 
+        isBillable: true, 
+        hourlyRate: 100 
+      });
+      
+      renderTaskCard(task);
+
+      // Wait for revenue to be calculated and displayed
+      await waitFor(() => {
+        expect(screen.getByText('$0.00')).toBeInTheDocument();
+      }, { timeout: 3000 });
+    });
+
+    it('does not render RevenueDisplay when task is not billable', async () => {
+      const task = createMockTask({ 
+        isBillable: false, 
+        hourlyRate: 100 
+      });
+      
+      renderTaskCard(task);
+
+      // RevenueDisplay should not render for non-billable tasks
+      await waitFor(() => {
+        expect(screen.queryByText('Rate not set')).not.toBeInTheDocument();
+        expect(screen.queryByText(/\$[\d,]+\.\d{2}/)).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows "Rate not set" when task is billable but no rate is set', async () => {
+      const task = createMockTask({ 
+        isBillable: true, 
+        hourlyRate: null 
+      });
+      
+      renderTaskCard(task);
+
+      await waitFor(() => {
+        expect(screen.getByText('Rate not set')).toBeInTheDocument();
+      }, { timeout: 3000 });
+    });
+
+    it('calculates revenue correctly with time entries', async () => {
+      const taskRepository = new TaskRepository();
+      const timeEntryRepository = new TimeEntryRepository();
+      
+      const task = await taskRepository.create({
+        title: 'Test Task',
+        columnId: 'column-1',
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: true,
+        hourlyRate: 100,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      // Add time entry: 2 hours (120 minutes)
+      await timeEntryRepository.create({
+        taskId: task.id,
+        startTime: new Date(),
+        endTime: new Date(),
+        duration: 120,
+        isManual: false
+      });
+
+      renderTaskCard(task);
+
+      // Revenue should be 2 hours × $100 = $200.00
+      await waitFor(() => {
+        expect(screen.getByText('$200.00')).toBeInTheDocument();
+      }, { timeout: 3000 });
+    });
+
+    it('updates revenue when task rate changes', async () => {
+      const taskRepository = new TaskRepository();
+      const timeEntryRepository = new TimeEntryRepository();
+      
+      const task = await taskRepository.create({
+        title: 'Test Task',
+        columnId: 'column-1',
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: true,
+        hourlyRate: 50,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      // Add time entry: 2 hours
+      await timeEntryRepository.create({
+        taskId: task.id,
+        startTime: new Date(),
+        endTime: new Date(),
+        duration: 120,
+        isManual: false
+      });
+
+      const { rerender } = renderTaskCard(task);
+
+      // Initial revenue: 2 hours × $50 = $100.00
+      await waitFor(() => {
+        expect(screen.getByText('$100.00')).toBeInTheDocument();
+      }, { timeout: 3000 });
+
+      // Update task rate to $75
+      await taskRepository.update(task.id, { hourlyRate: 75 });
+      const updatedTask = await taskRepository.getById(task.id);
+
+      rerender(
+        <SettingsProvider>
+          <ClientProvider>
+            <ProjectProvider>
+              <TaskProvider>
+                <TimerProvider>
+                  <TaskCard task={updatedTask!} />
+                </TimerProvider>
+              </TaskProvider>
+            </ProjectProvider>
+          </ClientProvider>
+        </SettingsProvider>
+      );
+
+      // Updated revenue: 2 hours × $75 = $150.00
+      await waitFor(() => {
+        expect(screen.getByText('$150.00')).toBeInTheDocument();
+      }, { timeout: 3000 });
+    });
+
+    it('shows $0.00 when billable hours are 0', async () => {
+      const task = createMockTask({ 
+        isBillable: true, 
+        hourlyRate: 100 
+      });
+      
+      renderTaskCard(task);
+
+      // No time entries, so revenue should be $0.00
+      await waitFor(() => {
+        expect(screen.getByText('$0.00')).toBeInTheDocument();
+      }, { timeout: 3000 });
     });
   });
 });
