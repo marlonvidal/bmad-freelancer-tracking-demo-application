@@ -712,6 +712,474 @@ describe('TaskContext', () => {
     });
   });
 
+  describe('getFilteredTasks', () => {
+    it('returns all tasks when no filters are applied', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+
+      await repository.create({
+        title: 'Task 1',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Task 2',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-2',
+        projectId: 'project-2',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      const filtered = contextValue.getFilteredTasks({ clientId: null, projectId: null });
+      expect(filtered.length).toBe(2);
+      expect(filtered.map((t: Task) => t.title)).toContain('Task 1');
+      expect(filtered.map((t: Task) => t.title)).toContain('Task 2');
+    });
+
+    it('filters tasks by client only', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+
+      await repository.create({
+        title: 'Client 1 Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 2 Task',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-2',
+        projectId: 'project-2',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      const filtered = contextValue.getFilteredTasks({ clientId: 'client-1', projectId: null });
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe('Client 1 Task');
+      expect(filtered[0].clientId).toBe('client-1');
+    });
+
+    it('filters tasks by project only', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+
+      await repository.create({
+        title: 'Project 1 Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Project 2 Task',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-2',
+        projectId: 'project-2',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      const filtered = contextValue.getFilteredTasks({ clientId: null, projectId: 'project-1' });
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe('Project 1 Task');
+      expect(filtered[0].projectId).toBe('project-1');
+    });
+
+    it('filters tasks by both client AND project', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+
+      await repository.create({
+        title: 'Client 1 Project 1 Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 1 Project 2 Task',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-1',
+        projectId: 'project-2',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 2 Project 1 Task',
+        columnId: testColumnId,
+        position: 2,
+        clientId: 'client-2',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      const filtered = contextValue.getFilteredTasks({ clientId: 'client-1', projectId: 'project-1' });
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe('Client 1 Project 1 Task');
+      expect(filtered[0].clientId).toBe('client-1');
+      expect(filtered[0].projectId).toBe('project-1');
+    });
+
+    it('handles tasks with null clientId/projectId correctly', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+
+      await repository.create({
+        title: 'Task with no client',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Task with client',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-1',
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      // When no filters, both tasks should be returned
+      const allTasks = contextValue.getFilteredTasks({ clientId: null, projectId: null });
+      expect(allTasks.length).toBe(2);
+
+      // When filtering by client-1, only the task with client-1 should be returned
+      const filtered = contextValue.getFilteredTasks({ clientId: 'client-1', projectId: null });
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe('Task with client');
+      expect(filtered[0].clientId).toBe('client-1');
+    });
+  });
+
+  describe('getFilteredTasksByColumnId', () => {
+    it('returns filtered tasks for specified column', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const columnRepository = new ColumnRepository();
+      const column2 = await columnRepository.create({
+        name: 'Column 2',
+        position: 1,
+        color: null
+      });
+
+      await repository.create({
+        title: 'Client 1 Task in Column 1',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 2 Task in Column 1',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-2',
+        projectId: 'project-2',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 1 Task in Column 2',
+        columnId: column2.id,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      // Filter by client-1, get tasks for column 1
+      const filtered = contextValue.getFilteredTasksByColumnId(testColumnId, { clientId: 'client-1', projectId: null });
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe('Client 1 Task in Column 1');
+      expect(filtered[0].columnId).toBe(testColumnId);
+      expect(filtered[0].clientId).toBe('client-1');
+    });
+
+    it('returns filtered tasks sorted by position', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+
+      await repository.create({
+        title: 'Task 3',
+        columnId: testColumnId,
+        position: 2,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Task 1',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Task 2',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      const filtered = contextValue.getFilteredTasksByColumnId(testColumnId, { clientId: 'client-1', projectId: null });
+      expect(filtered.length).toBe(3);
+      expect(filtered[0].title).toBe('Task 1');
+      expect(filtered[1].title).toBe('Task 2');
+      expect(filtered[2].title).toBe('Task 3');
+    });
+
+    it('combines column filter with client and project filters', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const columnRepository = new ColumnRepository();
+      const column2 = await columnRepository.create({
+        name: 'Column 2',
+        position: 1,
+        color: null
+      });
+
+      await repository.create({
+        title: 'Client 1 Project 1 in Column 1',
+        columnId: testColumnId,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 1 Project 2 in Column 1',
+        columnId: testColumnId,
+        position: 1,
+        clientId: 'client-1',
+        projectId: 'project-2',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      await repository.create({
+        title: 'Client 1 Project 1 in Column 2',
+        columnId: column2.id,
+        position: 0,
+        clientId: 'client-1',
+        projectId: 'project-1',
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      // Filter by client-1 AND project-1, get tasks for column 1
+      const filtered = contextValue.getFilteredTasksByColumnId(testColumnId, { clientId: 'client-1', projectId: 'project-1' });
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe('Client 1 Project 1 in Column 1');
+      expect(filtered[0].columnId).toBe(testColumnId);
+      expect(filtered[0].clientId).toBe('client-1');
+      expect(filtered[0].projectId).toBe('project-1');
+    });
+  });
+
   describe('error handling', () => {
     // Note: Testing error handling with closed database causes circular reference issues
     // Error handling is verified through validation and other scenarios

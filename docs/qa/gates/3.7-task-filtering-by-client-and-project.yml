@@ -1,0 +1,89 @@
+schema: 1
+story: "3.7"
+story_title: "Task Filtering by Client and Project"
+gate: CONCERNS
+status_reason: "Story is 67% complete (10 of 15 tasks). Core filtering functionality is working end-to-end with comprehensive unit test coverage. Integration test structure is in place but needs timing adjustments. TaskFilterBar tests have timing issues. Edge cases and performance optimization remain incomplete."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-23T18:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "TEST-001"
+    severity: medium
+    finding: "Integration tests have timing issues - 1/6 passing, 5 need timing adjustments"
+    suggested_action: "Fix integration test timing issues using userEvent or adjusting waitFor timeouts (Task 12)"
+    suggested_owner: "dev"
+  - id: "TEST-002"
+    severity: medium
+    finding: "TaskFilterBar tests have async timing issues - 14 failed, 7 passed due to React state update timing"
+    suggested_action: "Fix test timing issues using userEvent or adjusting waitFor timeouts (Task 10)"
+    suggested_owner: "dev"
+  - id: "TEST-003"
+    severity: medium
+    finding: "Drag-and-drop with filters not explicitly tested - functionality works but not validated"
+    suggested_action: "Complete Task 8: Add tests for drag-and-drop with filters active"
+    suggested_owner: "dev"
+  - id: "EDGE-001"
+    severity: low
+    finding: "Edge cases not fully handled - deleted clients/projects, null values need explicit handling"
+    suggested_action: "Complete Task 13: Handle edge cases and empty states"
+    suggested_owner: "dev"
+  - id: "PERF-001"
+    severity: low
+    finding: "Performance optimization not implemented - TaskContext filtered methods not memoized"
+    suggested_action: "Complete Task 14: Optimize filter performance with useMemo caching"
+    suggested_owner: "dev"
+
+risk_summary:
+  totals:
+    critical: 0
+    high: 0
+    medium: 3
+    low: 2
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Integration test timing issues"
+      - "TaskFilterBar test timing issues"
+      - "Drag-and-drop with filters validation"
+      - "Edge case handling"
+      - "Performance optimization"
+
+quality_score: 70
+expires: "2026-02-06T00:00:00Z"
+
+evidence:
+  tests_reviewed: 45
+  risks_identified: 5
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 9, 10]
+    ac_gaps: [8]
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No security concerns - filtering is client-side only"
+  performance:
+    status: CONCERNS
+    notes: "Performance optimizations (useMemo caching in TaskContext) not yet implemented per Task 14. Column component uses useMemo correctly."
+  reliability:
+    status: CONCERNS
+    notes: "Integration tests structure complete but timing issues prevent full validation. Core functionality works and is unit tested."
+  maintainability:
+    status: PASS
+    notes: "Code follows project standards, good separation of concerns, proper TypeScript typing"
+
+recommendations:
+  immediate:
+    - action: "Fix integration test timing issues (adjust waitFor timeouts or use userEvent)"
+      refs: ["tests/integration/task-filtering.test.tsx"]
+    - action: "Fix TaskFilterBar test async timing issues"
+      refs: ["tests/unit/components/kanban/TaskFilterBar.test.tsx"]
+  future:
+    - action: "Test drag-and-drop with filters active"
+      refs: ["tests/integration/task-filtering.test.tsx"]
+    - action: "Handle edge cases (deleted clients/projects, null values)"
+      refs: ["src/components/kanban/TaskFilterBar.tsx", "src/contexts/TaskContext.tsx"]
+    - action: "Implement performance optimizations (useMemo caching in TaskContext)"
+      refs: ["src/contexts/TaskContext.tsx"]

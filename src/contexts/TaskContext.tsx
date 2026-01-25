@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { Task } from '@/types/task';
 import { TaskRepository } from '@/services/data/repositories/TaskRepository';
+import { FilterState } from './FilterContext';
 
 interface TaskState {
   tasks: Task[];
@@ -14,6 +15,8 @@ interface TaskContextValue extends TaskState {
   deleteTask: (id: string) => Promise<void>;
   getTasksByColumnId: (columnId: string) => Task[];
   getTaskById: (id: string) => Task | undefined;
+  getFilteredTasks: (filters: FilterState) => Task[];
+  getFilteredTasksByColumnId: (columnId: string, filters: FilterState) => Task[];
 }
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
@@ -164,13 +167,52 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     return state.tasks.find(task => task.id === id);
   }, [state.tasks]);
 
+  /**
+   * Get filtered tasks based on client and/or project filters
+   * 
+   * Filtering logic:
+   * - If clientId is set: Filter tasks where task.clientId === clientId
+   * - If projectId is set: Filter tasks where task.projectId === projectId
+   * - If both are set: Filter tasks where task.clientId === clientId AND task.projectId === projectId
+   * - If neither is set: Return all tasks
+   * - Tasks with null clientId/projectId: Show when no filter is set for that field
+   */
+  const getFilteredTasks = useCallback((filters: FilterState): Task[] => {
+    let filtered = state.tasks;
+
+    // Apply client filter
+    if (filters.clientId !== null) {
+      filtered = filtered.filter(task => task.clientId === filters.clientId);
+    }
+
+    // Apply project filter
+    if (filters.projectId !== null) {
+      filtered = filtered.filter(task => task.projectId === filters.projectId);
+    }
+
+    return filtered;
+  }, [state.tasks]);
+
+  /**
+   * Get filtered tasks for a specific column
+   * Combines column filtering with client/project filtering
+   */
+  const getFilteredTasksByColumnId = useCallback((columnId: string, filters: FilterState): Task[] => {
+    const filtered = getFilteredTasks(filters);
+    return filtered
+      .filter(task => task.columnId === columnId)
+      .sort((a, b) => a.position - b.position);
+  }, [getFilteredTasks]);
+
   const value: TaskContextValue = {
     ...state,
     createTask,
     updateTask,
     deleteTask,
     getTasksByColumnId,
-    getTaskById
+    getTaskById,
+    getFilteredTasks,
+    getFilteredTasksByColumnId
   };
 
   return (

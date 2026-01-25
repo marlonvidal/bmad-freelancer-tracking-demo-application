@@ -5,6 +5,7 @@ import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { SortableColumn } from './SortableColumn';
 import { AddColumnButton } from './AddColumnButton';
+import { TaskFilterBar } from './TaskFilterBar';
 import { TaskCreationModal } from '../task/TaskCreationModal';
 import { Task } from '@/types/task';
 
@@ -302,6 +303,9 @@ export const KanbanBoard: React.FC = () => {
       role="region"
       aria-label="Kanban board"
     >
+      {/* Task Filter Bar */}
+      <TaskFilterBar />
+
       {/* Quick Add Task Button */}
       <div className="mb-4 flex justify-end">
         <button

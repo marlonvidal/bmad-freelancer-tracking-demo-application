@@ -4,6 +4,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Column as ColumnType } from '@/types/column';
 import { useColumnContext } from '@/contexts/ColumnContext';
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useFilterContext } from '@/contexts/FilterContext';
 import { EmptyColumnState } from './EmptyColumnState';
 import { ColumnHeader } from './ColumnHeader';
 import { DeleteColumnDialog } from './DeleteColumnDialog';
@@ -24,14 +25,20 @@ interface ColumnProps {
  */
 export const Column: React.FC<ColumnProps> = ({ column }) => {
   const { deleteColumn } = useColumnContext();
-  const { getTasksByColumnId, createTask } = useTaskContext();
+  const { getTasksByColumnId, getFilteredTasksByColumnId, createTask } = useTaskContext();
+  const { filters } = useFilterContext();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
-  // Get tasks for this column, sorted by position
+  // Get tasks for this column, filtered and sorted by position
   const tasks = React.useMemo(() => {
+    // Use filtered tasks if any filters are active, otherwise use all tasks
+    const hasActiveFilters = filters.clientId !== null || filters.projectId !== null;
+    if (hasActiveFilters) {
+      return getFilteredTasksByColumnId(column.id, filters);
+    }
     return getTasksByColumnId(column.id);
-  }, [getTasksByColumnId, column.id]);
+  }, [getTasksByColumnId, getFilteredTasksByColumnId, column.id, filters]);
 
   const taskCount = tasks.length;
   const taskIds = tasks.map(task => task.id);

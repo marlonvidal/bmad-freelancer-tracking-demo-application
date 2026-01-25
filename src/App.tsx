@@ -12,6 +12,7 @@ import { TimerProvider } from './contexts/TimerContext';
 import { ClientProvider } from './contexts/ClientContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { FilterProvider } from './contexts/FilterContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { RevenueDashboard } from './components/revenue/RevenueDashboard';
 
@@ -53,9 +54,11 @@ export const App: React.FC = () => {
             <TaskProvider>
               <ClientProvider>
                 <ProjectProvider>
-                  <TimerProvider>
-                    <AppContent />
-                  </TimerProvider>
+                  <FilterProvider>
+                    <TimerProvider>
+                      <AppContent />
+                    </TimerProvider>
+                  </FilterProvider>
                 </ProjectProvider>
               </ClientProvider>
             </TaskProvider>
