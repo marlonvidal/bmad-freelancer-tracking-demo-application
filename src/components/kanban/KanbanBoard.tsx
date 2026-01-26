@@ -6,6 +6,7 @@ import { useTaskContext } from '@/contexts/TaskContext';
 import { SortableColumn } from './SortableColumn';
 import { AddColumnButton } from './AddColumnButton';
 import { TaskFilterBar } from './TaskFilterBar';
+import { SearchBar } from './SearchBar';
 import { TaskCreationModal } from '../task/TaskCreationModal';
 import { TaskDetailPanel } from '../task/TaskDetailPanel';
 import { Task } from '@/types/task';
@@ -304,6 +305,9 @@ export const KanbanBoard: React.FC = () => {
       role="region"
       aria-label="Kanban board"
     >
+      {/* Search Bar */}
+      <SearchBar />
+
       {/* Task Filter Bar */}
       <TaskFilterBar />
 

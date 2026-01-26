@@ -33,6 +33,12 @@ describe('FilterContext', () => {
       expect(contextValue).toBeDefined();
       expect(contextValue.filters.clientId).toBeNull();
       expect(contextValue.filters.projectId).toBeNull();
+      expect(contextValue.filters.searchQuery).toBe('');
+      expect(contextValue.filters.billableStatus).toBeNull();
+      expect(contextValue.filters.priority).toBeNull();
+      expect(contextValue.filters.dueDateRange.start).toBeNull();
+      expect(contextValue.filters.dueDateRange.end).toBeNull();
+      expect(contextValue.filters.tags).toEqual([]);
       expect(screen.getByTestId('client-filter')).toHaveTextContent('null');
       expect(screen.getByTestId('project-filter')).toHaveTextContent('null');
     });
@@ -165,11 +171,22 @@ describe('FilterContext', () => {
       expect(contextValue.filters.projectId).toBe('project-1');
 
       act(() => {
+        contextValue.setSearchQuery('test query');
+        contextValue.setBillableFilter(true);
+        contextValue.setPriorityFilter('high');
+        contextValue.setTagFilters(['tag1']);
+      });
+
+      act(() => {
         contextValue.clearFilters();
       });
 
       expect(contextValue.filters.clientId).toBeNull();
       expect(contextValue.filters.projectId).toBeNull();
+      expect(contextValue.filters.searchQuery).toBe('');
+      expect(contextValue.filters.billableStatus).toBeNull();
+      expect(contextValue.filters.priority).toBeNull();
+      expect(contextValue.filters.tags).toEqual([]);
       expect(screen.getByTestId('client-filter')).toHaveTextContent('null');
       expect(screen.getByTestId('project-filter')).toHaveTextContent('null');
     });
@@ -190,10 +207,14 @@ describe('FilterContext', () => {
       });
 
       const filters = contextValue.getFilters();
-      expect(filters).toEqual({
-        clientId: 'client-1',
-        projectId: 'project-1'
-      });
+      expect(filters.clientId).toBe('client-1');
+      expect(filters.projectId).toBe('project-1');
+      expect(filters.searchQuery).toBe('');
+      expect(filters.billableStatus).toBeNull();
+      expect(filters.priority).toBeNull();
+      expect(filters.dueDateRange.start).toBeNull();
+      expect(filters.dueDateRange.end).toBeNull();
+      expect(filters.tags).toEqual([]);
     });
   });
 
@@ -275,6 +296,255 @@ describe('FilterContext', () => {
       }).toThrow('useFilterContext must be used within a FilterProvider');
 
       consoleError.mockRestore();
+    });
+  });
+
+  describe('setSearchQuery', () => {
+    it('updates search query', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setSearchQuery('test query');
+      });
+
+      expect(contextValue.filters.searchQuery).toBe('test query');
+    });
+
+    it('can set search query to empty string', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setSearchQuery('test');
+        contextValue.setSearchQuery('');
+      });
+
+      expect(contextValue.filters.searchQuery).toBe('');
+    });
+  });
+
+  describe('setBillableFilter', () => {
+    it('updates billable status filter', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setBillableFilter(true);
+      });
+
+      expect(contextValue.filters.billableStatus).toBe(true);
+    });
+
+    it('can set billable filter to null', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setBillableFilter(true);
+        contextValue.setBillableFilter(null);
+      });
+
+      expect(contextValue.filters.billableStatus).toBeNull();
+    });
+  });
+
+  describe('setPriorityFilter', () => {
+    it('updates priority filter', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setPriorityFilter('high');
+      });
+
+      expect(contextValue.filters.priority).toBe('high');
+    });
+
+    it('can set priority filter to null', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setPriorityFilter('high');
+        contextValue.setPriorityFilter(null);
+      });
+
+      expect(contextValue.filters.priority).toBeNull();
+    });
+  });
+
+  describe('setDueDateRange', () => {
+    it('updates due date range filter', () => {
+      let contextValue: any;
+      const startDate = new Date('2026-01-15');
+      const endDate = new Date('2026-01-20');
+
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setDueDateRange(startDate, endDate);
+      });
+
+      expect(contextValue.filters.dueDateRange.start).toEqual(startDate);
+      expect(contextValue.filters.dueDateRange.end).toEqual(endDate);
+    });
+
+    it('can set dates to null', () => {
+      let contextValue: any;
+      const startDate = new Date('2026-01-15');
+
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setDueDateRange(startDate, null);
+      });
+
+      expect(contextValue.filters.dueDateRange.start).toEqual(startDate);
+      expect(contextValue.filters.dueDateRange.end).toBeNull();
+    });
+  });
+
+  describe('setTagFilters', () => {
+    it('replaces all tag filters', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setTagFilters(['tag1', 'tag2']);
+      });
+
+      expect(contextValue.filters.tags).toEqual(['tag1', 'tag2']);
+    });
+
+    it('can set tags to empty array', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setTagFilters(['tag1']);
+        contextValue.setTagFilters([]);
+      });
+
+      expect(contextValue.filters.tags).toEqual([]);
+    });
+  });
+
+  describe('addTagFilter', () => {
+    it('adds a tag to filters', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.addTagFilter('tag1');
+      });
+
+      expect(contextValue.filters.tags).toContain('tag1');
+    });
+
+    it('does not add duplicate tags', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.addTagFilter('tag1');
+        contextValue.addTagFilter('tag1');
+      });
+
+      expect(contextValue.filters.tags).toEqual(['tag1']);
+    });
+  });
+
+  describe('removeTagFilter', () => {
+    it('removes a tag from filters', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setTagFilters(['tag1', 'tag2']);
+        contextValue.removeTagFilter('tag1');
+      });
+
+      expect(contextValue.filters.tags).not.toContain('tag1');
+      expect(contextValue.filters.tags).toContain('tag2');
+    });
+  });
+
+  describe('setClientFilter preserves other filters', () => {
+    it('preserves search query and other filters when client changes', () => {
+      let contextValue: any;
+      render(
+        <FilterProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </FilterProvider>
+      );
+
+      act(() => {
+        contextValue.setSearchQuery('test');
+        contextValue.setBillableFilter(true);
+        contextValue.setPriorityFilter('high');
+        contextValue.setTagFilters(['tag1']);
+        contextValue.setClientFilter('client-1');
+      });
+
+      expect(contextValue.filters.clientId).toBe('client-1');
+      expect(contextValue.filters.projectId).toBeNull(); // Should reset
+      expect(contextValue.filters.searchQuery).toBe('test'); // Should preserve
+      expect(contextValue.filters.billableStatus).toBe(true); // Should preserve
+      expect(contextValue.filters.priority).toBe('high'); // Should preserve
+      expect(contextValue.filters.tags).toEqual(['tag1']); // Should preserve
     });
   });
 });

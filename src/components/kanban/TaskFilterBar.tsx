@@ -2,6 +2,7 @@ import React, { useMemo, useEffect } from 'react';
 import { useFilterContext } from '@/contexts/FilterContext';
 import { useClientContext } from '@/contexts/ClientContext';
 import { useProjectContext } from '@/contexts/ProjectContext';
+import { useTaskContext } from '@/contexts/TaskContext';
 
 /**
  * TaskFilterBar - Filter controls for kanban board
@@ -10,9 +11,21 @@ import { useProjectContext } from '@/contexts/ProjectContext';
  * Projects are client-scoped, so project filter resets when client changes.
  */
 export const TaskFilterBar: React.FC = () => {
-  const { filters, setClientFilter, setProjectFilter, clearFilters } = useFilterContext();
+  const { 
+    filters, 
+    setClientFilter, 
+    setProjectFilter,
+    setSearchQuery,
+    setBillableFilter,
+    setPriorityFilter,
+    setDueDateRange,
+    setTagFilters,
+    removeTagFilter,
+    clearFilters 
+  } = useFilterContext();
   const { clients, loading: clientsLoading } = useClientContext();
   const { getProjectsByClientId, loading: projectsLoading } = useProjectContext();
+  const { tasks, getFilteredTasks } = useTaskContext();
 
   // Get projects for selected client
   const availableProjects = useMemo(() => {
@@ -47,7 +60,35 @@ export const TaskFilterBar: React.FC = () => {
     }
   }, [filters.clientId, filters.projectId, availableProjects, setProjectFilter]);
 
-  const hasActiveFilters = filters.clientId !== null || filters.projectId !== null;
+  // Get all unique tags from tasks
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    tasks.forEach(task => {
+      task.tags.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [tasks]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.clientId !== null ||
+      filters.projectId !== null ||
+      filters.searchQuery.trim() !== '' ||
+      filters.billableStatus !== null ||
+      filters.priority !== null ||
+      filters.dueDateRange.start !== null ||
+      filters.dueDateRange.end !== null ||
+      filters.tags.length > 0
+    );
+  }, [filters]);
+
+  // Get filtered task count
+  const filteredTaskCount = useMemo(() => {
+    return getFilteredTasks(filters).length;
+  }, [getFilteredTasks, filters]);
+
+  const totalTaskCount = tasks.length;
 
   /**
    * Handle client dropdown change
@@ -81,6 +122,91 @@ export const TaskFilterBar: React.FC = () => {
 
   const handleRemoveProjectFilter = () => {
     setProjectFilter(null);
+  };
+
+  /**
+   * Handle billable status dropdown change
+   */
+  const handleBillableChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === '') {
+      setBillableFilter(null);
+    } else {
+      setBillableFilter(value === 'true');
+    }
+  };
+
+  /**
+   * Handle priority dropdown change
+   */
+  const handlePriorityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === '') {
+      setPriorityFilter(null);
+    } else {
+      setPriorityFilter(value as 'low' | 'medium' | 'high');
+    }
+  };
+
+  /**
+   * Handle due date start change
+   * Validates that start date is not after end date
+   */
+  const handleDueDateStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const startDate = value ? new Date(value) : null;
+    
+    // Validate: if end date exists and start date is after end date, don't update
+    if (startDate && filters.dueDateRange.end) {
+      const endDate = new Date(filters.dueDateRange.end);
+      if (startDate > endDate) {
+        // Don't update if start date is after end date
+        return;
+      }
+    }
+    
+    setDueDateRange(startDate, filters.dueDateRange.end);
+  };
+
+  /**
+   * Handle due date end change
+   * Validates that end date is not before start date
+   */
+  const handleDueDateEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const endDate = value ? new Date(value) : null;
+    
+    // Validate: if start date exists and end date is before start date, don't update
+    if (endDate && filters.dueDateRange.start) {
+      const startDate = new Date(filters.dueDateRange.start);
+      if (endDate < startDate) {
+        // Don't update if end date is before start date
+        return;
+      }
+    }
+    
+    setDueDateRange(filters.dueDateRange.start, endDate);
+  };
+
+  /**
+   * Handle tag selection change
+   */
+  const handleTagChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions);
+    const selectedTags = selectedOptions.map(option => option.value);
+    setTagFilters(selectedTags);
+  };
+
+  /**
+   * Format date for input (YYYY-MM-DD)
+   */
+  const formatDateForInput = (date: Date | null): string => {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   return (
@@ -180,6 +306,109 @@ export const TaskFilterBar: React.FC = () => {
           )}
         </div>
 
+        {/* Billable Status Filter Dropdown */}
+        <div className="flex-1 min-w-[150px]">
+          <label 
+            htmlFor="filter-billable-select" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Billable Status
+          </label>
+          <select
+            id="filter-billable-select"
+            value={filters.billableStatus === null ? '' : filters.billableStatus.toString()}
+            onChange={handleBillableChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Filter by billable status"
+          >
+            <option value="">All</option>
+            <option value="true">Billable</option>
+            <option value="false">Non-billable</option>
+          </select>
+        </div>
+
+        {/* Priority Filter Dropdown */}
+        <div className="flex-1 min-w-[150px]">
+          <label 
+            htmlFor="filter-priority-select" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Priority
+          </label>
+          <select
+            id="filter-priority-select"
+            value={filters.priority || ''}
+            onChange={handlePriorityChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Filter by priority"
+          >
+            <option value="">All</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+
+        {/* Due Date Range Filters */}
+        <div className="flex-1 min-w-[200px]">
+          <label 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Due Date Range
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={formatDateForInput(filters.dueDateRange.start)}
+              onChange={handleDueDateStartChange}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Filter by due date start"
+            />
+            <span className="self-center text-gray-500">to</span>
+            <input
+              type="date"
+              value={formatDateForInput(filters.dueDateRange.end)}
+              onChange={handleDueDateEndChange}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Filter by due date end"
+            />
+          </div>
+        </div>
+
+        {/* Tags Filter */}
+        <div className="flex-1 min-w-[200px]">
+          <label 
+            htmlFor="filter-tags-select" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Tags
+          </label>
+          <select
+            id="filter-tags-select"
+            multiple
+            value={filters.tags}
+            onChange={handleTagChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Filter by tags (hold Ctrl/Cmd to select multiple)"
+            size={Math.min(allTags.length + 1, 5)}
+          >
+            {allTags.length === 0 ? (
+              <option disabled>No tags available</option>
+            ) : (
+              allTags.map(tag => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))
+            )}
+          </select>
+          {filters.tags.length > 0 && (
+            <p className="mt-1 text-xs text-gray-500">
+              {filters.tags.length} tag{filters.tags.length !== 1 ? 's' : ''} selected
+            </p>
+          )}
+        </div>
+
         {/* Clear Filters Button */}
         {hasActiveFilters && (
           <div className="flex items-end">
@@ -195,9 +424,48 @@ export const TaskFilterBar: React.FC = () => {
         )}
       </div>
 
+      {/* Filtered Task Count */}
+      {hasActiveFilters && (
+        <div className="mt-2 text-sm text-gray-600">
+          Showing <span className="font-semibold">{filteredTaskCount}</span> of <span className="font-semibold">{totalTaskCount}</span> task{totalTaskCount !== 1 ? 's' : ''}
+        </div>
+      )}
+
       {/* Active Filter Badges */}
       {hasActiveFilters && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          {/* Search Query Badge */}
+          {filters.searchQuery.trim() !== '' && (
+            <span
+              className="px-2 py-1 text-xs font-medium rounded-full border bg-yellow-100 text-yellow-800 border-yellow-200 flex items-center gap-1"
+              aria-label={`Search query: ${filters.searchQuery}`}
+            >
+              <span>Search: &quot;{filters.searchQuery}&quot;</span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="ml-1 hover:text-yellow-900 focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded"
+                aria-label={`Remove search query`}
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          )}
+
+          {/* Client Badge */}
           {selectedClient && (
             <span
               className="px-2 py-1 text-xs font-medium rounded-full border bg-blue-100 text-blue-800 border-blue-200 flex items-center gap-1"
@@ -227,6 +495,8 @@ export const TaskFilterBar: React.FC = () => {
               </button>
             </span>
           )}
+
+          {/* Project Badge */}
           {selectedProject && (
             <span
               className="px-2 py-1 text-xs font-medium rounded-full border bg-purple-100 text-purple-800 border-purple-200 flex items-center gap-1"
@@ -256,6 +526,133 @@ export const TaskFilterBar: React.FC = () => {
               </button>
             </span>
           )}
+
+          {/* Billable Status Badge */}
+          {filters.billableStatus !== null && (
+            <span
+              className="px-2 py-1 text-xs font-medium rounded-full border bg-green-100 text-green-800 border-green-200 flex items-center gap-1"
+              aria-label={`Filtered by billable status: ${filters.billableStatus ? 'Billable' : 'Non-billable'}`}
+            >
+              <span>{filters.billableStatus ? 'Billable' : 'Non-billable'}</span>
+              <button
+                type="button"
+                onClick={() => setBillableFilter(null)}
+                className="ml-1 hover:text-green-900 focus:outline-none focus:ring-1 focus:ring-green-500 rounded"
+                aria-label="Remove billable status filter"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          )}
+
+          {/* Priority Badge */}
+          {filters.priority !== null && (
+            <span
+              className="px-2 py-1 text-xs font-medium rounded-full border bg-orange-100 text-orange-800 border-orange-200 flex items-center gap-1"
+              aria-label={`Filtered by priority: ${filters.priority}`}
+            >
+              <span>Priority: {filters.priority.charAt(0).toUpperCase() + filters.priority.slice(1)}</span>
+              <button
+                type="button"
+                onClick={() => setPriorityFilter(null)}
+                className="ml-1 hover:text-orange-900 focus:outline-none focus:ring-1 focus:ring-orange-500 rounded"
+                aria-label="Remove priority filter"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          )}
+
+          {/* Due Date Range Badge */}
+          {(filters.dueDateRange.start !== null || filters.dueDateRange.end !== null) && (
+            <span
+              className="px-2 py-1 text-xs font-medium rounded-full border bg-indigo-100 text-indigo-800 border-indigo-200 flex items-center gap-1"
+              aria-label={`Filtered by due date range`}
+            >
+              <span>
+                Due: {filters.dueDateRange.start ? formatDateForInput(filters.dueDateRange.start) : '...'} - {filters.dueDateRange.end ? formatDateForInput(filters.dueDateRange.end) : '...'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDueDateRange(null, null)}
+                className="ml-1 hover:text-indigo-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded"
+                aria-label="Remove due date range filter"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          )}
+
+          {/* Tags Badges */}
+          {filters.tags.map(tag => (
+            <span
+              key={tag}
+              className="px-2 py-1 text-xs font-medium rounded-full border bg-pink-100 text-pink-800 border-pink-200 flex items-center gap-1"
+              aria-label={`Filtered by tag: ${tag}`}
+            >
+              <span>Tag: {tag}</span>
+              <button
+                type="button"
+                onClick={() => removeTagFilter(tag)}
+                className="ml-1 hover:text-pink-900 focus:outline-none focus:ring-1 focus:ring-pink-500 rounded"
+                aria-label={`Remove tag filter: ${tag}`}
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          ))}
         </div>
       )}
     </div>

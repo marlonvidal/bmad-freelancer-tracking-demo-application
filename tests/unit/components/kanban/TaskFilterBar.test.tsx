@@ -2,6 +2,8 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { TaskFilterBar } from '@/components/kanban/TaskFilterBar';
 import { FilterProvider } from '@/contexts/FilterContext';
+import { TaskProvider } from '@/contexts/TaskContext';
+import { ColumnProvider } from '@/contexts/ColumnContext';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ClientRepository } from '@/services/data/repositories/ClientRepository';
@@ -12,13 +14,17 @@ import { Project } from '@/types/project';
 
 const renderTaskFilterBar = () => {
   return render(
-    <ClientProvider>
-      <ProjectProvider>
-        <FilterProvider>
-          <TaskFilterBar />
-        </FilterProvider>
-      </ProjectProvider>
-    </ClientProvider>
+    <ColumnProvider>
+      <TaskProvider>
+        <ClientProvider>
+          <ProjectProvider>
+            <FilterProvider>
+              <TaskFilterBar />
+            </FilterProvider>
+          </ProjectProvider>
+        </ClientProvider>
+      </TaskProvider>
+    </ColumnProvider>
   );
 };
 

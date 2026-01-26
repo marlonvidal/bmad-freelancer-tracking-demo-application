@@ -10,11 +10,13 @@ import { TimeEntryRepository } from '@/services/data/repositories/TimeEntryRepos
 import { TimeEntry } from '@/types/timeEntry';
 import { TimerState } from '@/types/timerState';
 import { useTaskContext } from '@/contexts/TaskContext';
+import { useFilterContext } from '@/contexts/FilterContext';
 import { useClientContext } from '@/contexts/ClientContext';
 import { useProjectContext } from '@/contexts/ProjectContext';
 import { useSettingsContext } from '@/contexts/SettingsContext';
 import { useTimerContext } from '@/contexts/TimerContext';
 import { revenueService } from '@/services/RevenueService';
+import { highlightTaskTitle } from '@/utils/searchUtils';
 
 interface TaskCardProps {
   task: Task;
@@ -117,10 +119,14 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const [activeTimer, setActiveTimer] = useState<TimerState | null>(null);
   const timeEntryRepository = useMemo(() => new TimeEntryRepository(), []);
   const { updateTask } = useTaskContext();
+  const { filters } = useFilterContext();
   const { getAllClients } = useClientContext();
   const { getAllProjects } = useProjectContext();
   const { settings } = useSettingsContext();
   const { isActive: isTimerActive, activeTaskId, startTime, status: timerStatus, elapsedTime } = useTimerContext();
+
+  // Get search query for highlighting
+  const searchQuery = filters.searchQuery.trim();
 
   // Load total time for estimate comparison
   useEffect(() => {
@@ -309,7 +315,7 @@ const TaskCardComponent: React.FC<TaskCardProps> = ({ task, onClick }) => {
             id={`task-${task.id}-title`}
             className="text-base font-semibold text-gray-900 line-clamp-2 flex-1"
           >
-            {task.title}
+            {searchQuery ? highlightTaskTitle(task, searchQuery) : task.title}
           </h3>
           <TimerControl taskId={task.id} />
         </div>

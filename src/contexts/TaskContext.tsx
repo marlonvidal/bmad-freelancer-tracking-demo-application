@@ -17,6 +17,7 @@ interface TaskContextValue extends TaskState {
   deleteTask: (id: string) => Promise<void>;
   getTasksByColumnId: (columnId: string) => Task[];
   getTaskById: (id: string) => Task | undefined;
+  searchTasks: (tasks: Task[], query: string) => Task[];
   getFilteredTasks: (filters: FilterState) => Task[];
   getFilteredTasksByColumnId: (columnId: string, filters: FilterState) => Task[];
   openTaskPanel: (taskId: string) => void;
@@ -179,17 +180,65 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
   }, [state.tasks]);
 
   /**
-   * Get filtered tasks based on client and/or project filters
+   * Search tasks by query string
+   * 
+   * Searches in task title, description, and tags (case-insensitive, partial match).
+   * Returns tasks that match any of the search fields (OR logic within search).
+   * 
+   * @param tasks - Tasks to search through
+   * @param query - Search query string (empty string = no search)
+   * @returns Filtered tasks that match the search query
+   */
+  const searchTasks = useCallback((tasks: Task[], query: string): Task[] => {
+    if (!query || query.trim() === '') {
+      return tasks; // No search query, return all tasks
+    }
+
+    const normalizedQuery = query.toLowerCase().trim();
+
+    return tasks.filter(task => {
+      // Search in title (case-insensitive, partial match)
+      const titleMatch = task.title.toLowerCase().includes(normalizedQuery);
+
+      // Search in description (case-insensitive, partial match)
+      const descriptionMatch = task.description
+        ? task.description.toLowerCase().includes(normalizedQuery)
+        : false;
+
+      // Search in tags (case-insensitive, exact or partial match)
+      // Use Set for O(1) lookup performance
+      const tagSet = new Set(task.tags.map(tag => tag.toLowerCase()));
+      const tagMatch = Array.from(tagSet).some(tag =>
+        tag.includes(normalizedQuery) || normalizedQuery.includes(tag)
+      );
+
+      // Return tasks that match any of the above fields (OR logic)
+      return titleMatch || descriptionMatch || tagMatch;
+    });
+  }, []);
+
+  /**
+   * Get filtered tasks based on all filters (client, project, search, billable, priority, date range, tags)
    * 
    * Filtering logic:
-   * - If clientId is set: Filter tasks where task.clientId === clientId
-   * - If projectId is set: Filter tasks where task.projectId === projectId
-   * - If both are set: Filter tasks where task.clientId === clientId AND task.projectId === projectId
-   * - If neither is set: Return all tasks
-   * - Tasks with null clientId/projectId: Show when no filter is set for that field
+   * 1. Apply search first (if searchQuery is not empty)
+   * 2. Apply client filter
+   * 3. Apply project filter
+   * 4. Apply billable status filter
+   * 5. Apply priority filter
+   * 6. Apply due date range filter
+   * 7. Apply tags filter
+   * 
+   * All filters use AND logic (all filters must match).
+   * Tasks with null values show when no filter is set for that field.
    */
   const getFilteredTasks = useCallback((filters: FilterState): Task[] => {
     let filtered = state.tasks;
+
+    // Apply search first (if search query exists)
+    if (filters.searchQuery && filters.searchQuery.trim() !== '') {
+      filtered = searchTasks(filtered, filters.searchQuery);
+    }
 
     // Apply client filter
     if (filters.clientId !== null) {
@@ -201,12 +250,68 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
       filtered = filtered.filter(task => task.projectId === filters.projectId);
     }
 
+    // Apply billable status filter
+    if (filters.billableStatus !== null) {
+      filtered = filtered.filter(task => task.isBillable === filters.billableStatus);
+    }
+
+    // Apply priority filter
+    if (filters.priority !== null) {
+      filtered = filtered.filter(task => task.priority === filters.priority);
+    }
+
+    // Apply due date range filter
+    if (filters.dueDateRange.start !== null || filters.dueDateRange.end !== null) {
+      // Validate date range: start should not be after end
+      const startDate = filters.dueDateRange.start ? new Date(filters.dueDateRange.start) : null;
+      const endDate = filters.dueDateRange.end ? new Date(filters.dueDateRange.end) : null;
+      
+      // Only apply filter if date range is valid
+      if (!startDate || !endDate || startDate <= endDate) {
+        filtered = filtered.filter(task => {
+          if (!task.dueDate) {
+            return false; // Tasks without due date don't match date range filter
+          }
+
+          const taskDueDate = new Date(task.dueDate);
+          taskDueDate.setHours(0, 0, 0, 0);
+
+          if (startDate) {
+            const normalizedStart = new Date(startDate);
+            normalizedStart.setHours(0, 0, 0, 0);
+            if (taskDueDate < normalizedStart) {
+              return false;
+            }
+          }
+
+          if (endDate) {
+            const normalizedEnd = new Date(endDate);
+            normalizedEnd.setHours(23, 59, 59, 999);
+            if (taskDueDate > normalizedEnd) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+      }
+      // If date range is invalid (start > end), don't filter (show all tasks)
+    }
+
+    // Apply tags filter (tasks must have at least one matching tag)
+    if (filters.tags.length > 0) {
+      const tagSet = new Set(filters.tags.map(tag => tag.toLowerCase()));
+      filtered = filtered.filter(task =>
+        task.tags.some(taskTag => tagSet.has(taskTag.toLowerCase()))
+      );
+    }
+
     return filtered;
-  }, [state.tasks]);
+  }, [state.tasks, searchTasks]);
 
   /**
    * Get filtered tasks for a specific column
-   * Combines column filtering with client/project filtering
+   * Combines column filtering with all filters (client, project, search, billable, priority, date range, tags)
    */
   const getFilteredTasksByColumnId = useCallback((columnId: string, filters: FilterState): Task[] => {
     const filtered = getFilteredTasks(filters);
@@ -253,6 +358,7 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     deleteTask,
     getTasksByColumnId,
     getTaskById,
+    searchTasks,
     getFilteredTasks,
     getFilteredTasksByColumnId,
     openTaskPanel,

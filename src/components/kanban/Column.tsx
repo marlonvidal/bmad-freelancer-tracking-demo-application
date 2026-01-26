@@ -25,20 +25,16 @@ interface ColumnProps {
  */
 export const Column: React.FC<ColumnProps> = ({ column }) => {
   const { deleteColumn } = useColumnContext();
-  const { getTasksByColumnId, getFilteredTasksByColumnId, createTask, openTaskPanel } = useTaskContext();
+  const { getFilteredTasksByColumnId, createTask, openTaskPanel } = useTaskContext();
   const { filters } = useFilterContext();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   // Get tasks for this column, filtered and sorted by position
+  // Always use getFilteredTasksByColumnId with full FilterState (includes search and all filters)
   const tasks = React.useMemo(() => {
-    // Use filtered tasks if any filters are active, otherwise use all tasks
-    const hasActiveFilters = filters.clientId !== null || filters.projectId !== null;
-    if (hasActiveFilters) {
-      return getFilteredTasksByColumnId(column.id, filters);
-    }
-    return getTasksByColumnId(column.id);
-  }, [getTasksByColumnId, getFilteredTasksByColumnId, column.id, filters]);
+    return getFilteredTasksByColumnId(column.id, filters);
+  }, [getFilteredTasksByColumnId, column.id, filters]);
 
   const taskCount = tasks.length;
   const taskIds = tasks.map(task => task.id);

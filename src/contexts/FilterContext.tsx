@@ -4,14 +4,32 @@ import React, { createContext, useContext, useState, useCallback, useMemo, React
  * FilterState - Represents the current filter state
  */
 export interface FilterState {
+  // Existing filters from Story 3.7
   clientId: string | null;       // Selected client filter (null = no filter)
   projectId: string | null;      // Selected project filter (null = no filter)
+  
+  // New filters for Story 4.2
+  searchQuery: string;                    // Search text (empty string = no search)
+  billableStatus: boolean | null;         // null = no filter, true = billable only, false = non-billable only
+  priority: 'low' | 'medium' | 'high' | null;  // null = no filter
+  dueDateRange: {                         // null dates = no filter for that bound
+    start: Date | null;
+    end: Date | null;
+  };
+  tags: string[];                         // Empty array = no filter, non-empty = tasks must have at least one matching tag
 }
 
 interface FilterContextValue {
   filters: FilterState;
   setClientFilter: (clientId: string | null) => void;
   setProjectFilter: (projectId: string | null) => void;
+  setSearchQuery: (query: string) => void;
+  setBillableFilter: (status: boolean | null) => void;
+  setPriorityFilter: (priority: 'low' | 'medium' | 'high' | null) => void;
+  setDueDateRange: (start: Date | null, end: Date | null) => void;
+  setTagFilters: (tags: string[]) => void;
+  addTagFilter: (tag: string) => void;
+  removeTagFilter: (tag: string) => void;
   clearFilters: () => void;
   getFilters: () => FilterState;
 }
@@ -31,7 +49,15 @@ interface FilterProviderProps {
 export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
   const [filters, setFilters] = useState<FilterState>({
     clientId: null,
-    projectId: null
+    projectId: null,
+    searchQuery: '',
+    billableStatus: null,
+    priority: null,
+    dueDateRange: {
+      start: null,
+      end: null
+    },
+    tags: []
   });
 
   /**
@@ -39,10 +65,11 @@ export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
    * When client filter changes, project filter is reset (projects are client-scoped)
    */
   const setClientFilter = useCallback((clientId: string | null): void => {
-    setFilters({
+    setFilters(prev => ({
+      ...prev,
       clientId,
       projectId: null // Reset project filter when client changes
-    });
+    }));
   }, []);
 
   /**
@@ -57,12 +84,93 @@ export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Clear all filters
+   * Set search query
+   */
+  const setSearchQuery = useCallback((query: string): void => {
+    setFilters(prev => ({
+      ...prev,
+      searchQuery: query
+    }));
+  }, []);
+
+  /**
+   * Set billable status filter
+   */
+  const setBillableFilter = useCallback((status: boolean | null): void => {
+    setFilters(prev => ({
+      ...prev,
+      billableStatus: status
+    }));
+  }, []);
+
+  /**
+   * Set priority filter
+   */
+  const setPriorityFilter = useCallback((priority: 'low' | 'medium' | 'high' | null): void => {
+    setFilters(prev => ({
+      ...prev,
+      priority
+    }));
+  }, []);
+
+  /**
+   * Set due date range filter
+   */
+  const setDueDateRange = useCallback((start: Date | null, end: Date | null): void => {
+    setFilters(prev => ({
+      ...prev,
+      dueDateRange: {
+        start,
+        end
+      }
+    }));
+  }, []);
+
+  /**
+   * Set tag filters (replaces all tags)
+   */
+  const setTagFilters = useCallback((tags: string[]): void => {
+    setFilters(prev => ({
+      ...prev,
+      tags
+    }));
+  }, []);
+
+  /**
+   * Add a tag to the filter
+   */
+  const addTagFilter = useCallback((tag: string): void => {
+    setFilters(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag) ? prev.tags : [...prev.tags, tag]
+    }));
+  }, []);
+
+  /**
+   * Remove a tag from the filter
+   */
+  const removeTagFilter = useCallback((tag: string): void => {
+    setFilters(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tag)
+    }));
+  }, []);
+
+  /**
+   * Clear all filters including search
    */
   const clearFilters = useCallback((): void => {
     setFilters({
       clientId: null,
-      projectId: null
+      projectId: null,
+      searchQuery: '',
+      billableStatus: null,
+      priority: null,
+      dueDateRange: {
+        start: null,
+        end: null
+      },
+      tags: []
     });
   }, []);
 
@@ -77,9 +185,29 @@ export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
     filters,
     setClientFilter,
     setProjectFilter,
+    setSearchQuery,
+    setBillableFilter,
+    setPriorityFilter,
+    setDueDateRange,
+    setTagFilters,
+    addTagFilter,
+    removeTagFilter,
     clearFilters,
     getFilters
-  }), [filters, setClientFilter, setProjectFilter, clearFilters, getFilters]);
+  }), [
+    filters,
+    setClientFilter,
+    setProjectFilter,
+    setSearchQuery,
+    setBillableFilter,
+    setPriorityFilter,
+    setDueDateRange,
+    setTagFilters,
+    addTagFilter,
+    removeTagFilter,
+    clearFilters,
+    getFilters
+  ]);
 
   return (
     <FilterContext.Provider value={value}>
