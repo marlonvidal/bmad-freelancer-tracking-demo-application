@@ -25,7 +25,7 @@ interface ColumnProps {
  */
 export const Column: React.FC<ColumnProps> = ({ column }) => {
   const { deleteColumn } = useColumnContext();
-  const { getTasksByColumnId, getFilteredTasksByColumnId, createTask } = useTaskContext();
+  const { getTasksByColumnId, getFilteredTasksByColumnId, createTask, openTaskPanel } = useTaskContext();
   const { filters } = useFilterContext();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -111,8 +111,7 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
                   key={task.id}
                   task={task}
                   onClick={() => {
-                    // Future: Open task detail view
-                    console.log('Task clicked:', task.id);
+                    openTaskPanel(task.id);
                   }}
                 />
               ))}

@@ -83,7 +83,7 @@ export const RevenueDashboard: React.FC = () => {
    * Load all dashboard data
    */
   const loadDashboardData = useCallback(async (showRecalculating = false) => {
-    let isMounted = true;
+    const isMounted = true;
 
     try {
       if (showRecalculating) {

@@ -7,6 +7,7 @@ import { SortableColumn } from './SortableColumn';
 import { AddColumnButton } from './AddColumnButton';
 import { TaskFilterBar } from './TaskFilterBar';
 import { TaskCreationModal } from '../task/TaskCreationModal';
+import { TaskDetailPanel } from '../task/TaskDetailPanel';
 import { Task } from '@/types/task';
 
 /**
@@ -19,7 +20,7 @@ import { Task } from '@/types/task';
  */
 export const KanbanBoard: React.FC = () => {
   const { columns, loading, error, reorderColumns } = useColumnContext();
-  const { createTask, updateTask, tasks } = useTaskContext();
+  const { createTask, updateTask, tasks, isPanelOpen, selectedTaskId, closeTaskPanel } = useTaskContext();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [initialColumnId, setInitialColumnId] = useState<string | undefined>(undefined);
   const [isDragging, setIsDragging] = useState(false);
@@ -374,6 +375,13 @@ export const KanbanBoard: React.FC = () => {
         initialColumnId={initialColumnId}
         onClose={() => setIsTaskModalOpen(false)}
         onSubmit={handleTaskSubmit}
+      />
+
+      {/* Task Detail Panel */}
+      <TaskDetailPanel
+        isOpen={isPanelOpen}
+        taskId={selectedTaskId}
+        onClose={closeTaskPanel}
       />
     </div>
   );

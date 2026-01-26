@@ -7,6 +7,8 @@ interface TaskState {
   tasks: Task[];
   loading: boolean;
   error: Error | null;
+  selectedTaskId: string | null;
+  isPanelOpen: boolean;
 }
 
 interface TaskContextValue extends TaskState {
@@ -17,6 +19,9 @@ interface TaskContextValue extends TaskState {
   getTaskById: (id: string) => Task | undefined;
   getFilteredTasks: (filters: FilterState) => Task[];
   getFilteredTasksByColumnId: (columnId: string, filters: FilterState) => Task[];
+  openTaskPanel: (taskId: string) => void;
+  closeTaskPanel: () => void;
+  getSelectedTask: () => Task | null;
 }
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
@@ -35,7 +40,9 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
   const [state, setState] = useState<TaskState>({
     tasks: [],
     loading: true,
-    error: null
+    error: null,
+    selectedTaskId: null,
+    isPanelOpen: false
   });
 
   const repository = useMemo(() => new TaskRepository(), []);
@@ -129,6 +136,7 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
   /**
    * Delete a task
    * Uses optimistic update: removes task from state immediately, then deletes from IndexedDB
+   * Closes panel if the deleted task was selected
    */
   const deleteTask = useCallback(async (id: string): Promise<void> => {
     try {
@@ -136,7 +144,10 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
       setState(prev => ({
         ...prev,
         tasks: prev.tasks.filter(task => task.id !== id),
-        error: null
+        error: null,
+        // Close panel if deleted task was selected
+        isPanelOpen: prev.selectedTaskId === id ? false : prev.isPanelOpen,
+        selectedTaskId: prev.selectedTaskId === id ? null : prev.selectedTaskId
       }));
 
       // Delete from IndexedDB
@@ -204,6 +215,37 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
       .sort((a, b) => a.position - b.position);
   }, [getFilteredTasks]);
 
+  /**
+   * Open task detail panel for a specific task
+   */
+  const openTaskPanel = useCallback((taskId: string) => {
+    setState(prev => ({
+      ...prev,
+      selectedTaskId: taskId,
+      isPanelOpen: true
+    }));
+  }, []);
+
+  /**
+   * Close task detail panel
+   */
+  const closeTaskPanel = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      isPanelOpen: false,
+      // Keep selectedTaskId for potential focus restoration
+      // Will be cleared when panel is actually closed
+    }));
+  }, []);
+
+  /**
+   * Get the currently selected task
+   */
+  const getSelectedTask = useCallback((): Task | null => {
+    if (!state.selectedTaskId) return null;
+    return state.tasks.find(task => task.id === state.selectedTaskId) || null;
+  }, [state.selectedTaskId, state.tasks]);
+
   const value: TaskContextValue = {
     ...state,
     createTask,
@@ -212,7 +254,10 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     getTasksByColumnId,
     getTaskById,
     getFilteredTasks,
-    getFilteredTasksByColumnId
+    getFilteredTasksByColumnId,
+    openTaskPanel,
+    closeTaskPanel,
+    getSelectedTask
   };
 
   return (

@@ -21,6 +21,8 @@ const TestComponent: React.FC<{ onContextValue?: (value: any) => void }> = ({ on
       {context.loading && <div data-testid="loading">Loading...</div>}
       {context.error && <div data-testid="error">{context.error.message}</div>}
       <div data-testid="tasks-count">{context.tasks.length}</div>
+      <div data-testid="panel-open">{context.isPanelOpen ? 'open' : 'closed'}</div>
+      <div data-testid="selected-task-id">{context.selectedTaskId || 'none'}</div>
       {context.tasks.map(task => (
         <div key={task.id} data-testid={`task-${task.id}`}>
           {task.title}
@@ -501,10 +503,12 @@ describe('TaskContext', () => {
       });
 
       await act(async () => {
-        const deletePromise = contextValue.deleteTask(task.id);
-        // Check immediately - should be removed optimistically
+        await contextValue.deleteTask(task.id);
+      });
+
+      // After delete completes, task should be removed
+      await waitFor(() => {
         expect(contextValue.tasks.find((t: Task) => t.id === task.id)).toBeUndefined();
-        await deletePromise;
       });
     });
   });
@@ -1215,6 +1219,246 @@ describe('TaskContext', () => {
 
       await waitFor(() => {
         expect(contextValue.tasks.some((t: Task) => t.title === 'Valid Task')).toBe(true);
+      });
+    });
+  });
+
+  describe('panel state management', () => {
+    it('initializes with panel closed and no selected task', async () => {
+      render(
+        <TaskProvider>
+          <TestComponent />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      // Check via screen elements
+      expect(screen.getByTestId('panel-open')).toHaveTextContent('closed');
+      expect(screen.getByTestId('selected-task-id')).toHaveTextContent('none');
+    });
+
+    it('opens panel and sets selected task ID', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const task = await repository.create({
+        title: 'Test Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      await act(async () => {
+        contextValue.openTaskPanel(task.id);
+      });
+
+      expect(contextValue.isPanelOpen).toBe(true);
+      expect(contextValue.selectedTaskId).toBe(task.id);
+      expect(screen.getByTestId('panel-open')).toHaveTextContent('open');
+      expect(screen.getByTestId('selected-task-id')).toHaveTextContent(task.id);
+    });
+
+    it('closes panel but keeps selected task ID', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const task = await repository.create({
+        title: 'Test Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      await act(async () => {
+        contextValue.openTaskPanel(task.id);
+      });
+
+      expect(contextValue.isPanelOpen).toBe(true);
+
+      await act(async () => {
+        contextValue.closeTaskPanel();
+      });
+
+      expect(contextValue.isPanelOpen).toBe(false);
+      expect(contextValue.selectedTaskId).toBe(task.id); // Kept for focus restoration
+      expect(screen.getByTestId('panel-open')).toHaveTextContent('closed');
+    });
+
+    it('getSelectedTask returns correct task', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const task = await repository.create({
+        title: 'Selected Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      await act(async () => {
+        contextValue.openTaskPanel(task.id);
+      });
+
+      const selectedTask = contextValue.getSelectedTask();
+      expect(selectedTask).toBeDefined();
+      expect(selectedTask?.id).toBe(task.id);
+      expect(selectedTask?.title).toBe('Selected Task');
+    });
+
+    it('getSelectedTask returns null when no task selected', async () => {
+      let contextValue: any;
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      const selectedTask = contextValue.getSelectedTask();
+      expect(selectedTask).toBeNull();
+    });
+
+    it('getSelectedTask returns null when selected task is deleted', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const task = await repository.create({
+        title: 'Task to Delete',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      await act(async () => {
+        contextValue.openTaskPanel(task.id);
+      });
+
+      expect(contextValue.getSelectedTask()?.id).toBe(task.id);
+
+      await act(async () => {
+        await contextValue.deleteTask(task.id);
+      });
+
+      // Panel should be closed and selectedTaskId cleared when task is deleted
+      expect(contextValue.isPanelOpen).toBe(false);
+      expect(contextValue.selectedTaskId).toBeNull();
+      expect(contextValue.getSelectedTask()).toBeNull();
+    });
+
+    it('panel state updates trigger re-renders', async () => {
+      let contextValue: any;
+      const repository = new TaskRepository();
+      const task = await repository.create({
+        title: 'Test Task',
+        columnId: testColumnId,
+        position: 0,
+        clientId: null,
+        projectId: null,
+        isBillable: false,
+        hourlyRate: null,
+        timeEstimate: null,
+        dueDate: null,
+        priority: null,
+        tags: []
+      });
+
+      render(
+        <TaskProvider>
+          <TestComponent onContextValue={(value) => { contextValue = value; }} />
+        </TaskProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('panel-open')).toHaveTextContent('closed');
+
+      await act(async () => {
+        contextValue.openTaskPanel(task.id);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('panel-open')).toHaveTextContent('open');
+      });
+
+      await act(async () => {
+        contextValue.closeTaskPanel();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('panel-open')).toHaveTextContent('closed');
       });
     });
   });
