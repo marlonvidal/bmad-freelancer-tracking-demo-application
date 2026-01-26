@@ -23,6 +23,7 @@ interface TaskContextValue extends TaskState {
   openTaskPanel: (taskId: string) => void;
   closeTaskPanel: () => void;
   getSelectedTask: () => Task | null;
+  refreshTasks: () => Promise<void>;
 }
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
@@ -363,7 +364,8 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     getFilteredTasksByColumnId,
     openTaskPanel,
     closeTaskPanel,
-    getSelectedTask
+    getSelectedTask,
+    refreshTasks: loadTasks
   };
 
   return (

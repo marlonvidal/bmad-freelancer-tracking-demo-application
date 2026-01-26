@@ -9,6 +9,7 @@ interface SettingsContextValue {
   updateSettings: (updates: Partial<Omit<Settings, 'id'>>) => Promise<void>;
   getDefaultBillableStatus: () => boolean;
   getDefaultHourlyRate: () => number | null;
+  refreshSettings: () => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -109,7 +110,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     error,
     updateSettings,
     getDefaultBillableStatus,
-    getDefaultHourlyRate
+    getDefaultHourlyRate,
+    refreshSettings: loadSettings
   };
 
   return (

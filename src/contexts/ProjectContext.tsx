@@ -14,6 +14,7 @@ interface ProjectContextValue extends ProjectState {
   createProject: (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Project>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<Project>;
   deleteProject: (id: string) => Promise<void>;
+  refreshProjects: () => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(undefined);
@@ -190,7 +191,8 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     getProjectsByClientId,
     createProject,
     updateProject,
-    deleteProject
+    deleteProject,
+    refreshProjects: loadProjects
   };
 
   return (

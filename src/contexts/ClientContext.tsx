@@ -14,6 +14,7 @@ interface ClientContextValue extends ClientState {
   createClient: (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Client>;
   updateClient: (id: string, updates: Partial<Client>) => Promise<Client>;
   deleteClient: (id: string) => Promise<void>;
+  refreshClients: () => Promise<void>;
 }
 
 const ClientContext = createContext<ClientContextValue | undefined>(undefined);
@@ -189,7 +190,8 @@ export const ClientProvider: React.FC<ClientProviderProps> = ({ children }) => {
     getAllClients,
     createClient,
     updateClient,
-    deleteClient
+    deleteClient,
+    refreshClients: loadClients
   };
 
   return (

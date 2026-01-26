@@ -24,6 +24,7 @@ interface TimerContextValue extends TimerContextState {
   isActive: (taskId: string) => boolean;
   backgroundTimerNotification: string | null;
   clearBackgroundTimerNotification: () => void;
+  refreshTimerState: () => Promise<void>;
 }
 
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
@@ -661,7 +662,8 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     getElapsedTime,
     isActive,
     backgroundTimerNotification,
-    clearBackgroundTimerNotification
+    clearBackgroundTimerNotification,
+    refreshTimerState: () => loadTimerState(false)
   }), [
     state,
     startTimer,
@@ -669,7 +671,8 @@ export const TimerProvider: React.FC<TimerProviderProps> = ({ children }) => {
     getElapsedTime,
     isActive,
     backgroundTimerNotification,
-    clearBackgroundTimerNotification
+    clearBackgroundTimerNotification,
+    loadTimerState
   ]);
 
   return (

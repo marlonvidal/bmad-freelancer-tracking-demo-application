@@ -142,6 +142,53 @@ export class ExportService {
   }
 
   /**
+   * Create a backup of all application data
+   * 
+   * Exports all data (tasks, time entries, clients, projects, columns, settings)
+   * to a JSON backup file with timestamp in filename. This is specifically designed
+   * for backup/restore functionality.
+   * 
+   * @throws Error if no data found or export fails
+   */
+  async backupAllData(): Promise<void> {
+    try {
+      // Fetch all data
+      const [tasks, timeEntries, clients, projects, columns, settings] = await Promise.all([
+        this.taskRepository.getAll(),
+        this.timeEntryRepository.getAll(),
+        this.clientRepository.getAll(),
+        this.projectRepository.getAll(),
+        this.columnRepository.getAll(),
+        this.settingsRepository.getSettings(),
+      ]);
+
+      // Check for empty dataset
+      if (
+        tasks.length === 0 &&
+        timeEntries.length === 0 &&
+        clients.length === 0 &&
+        projects.length === 0 &&
+        columns.length === 0
+      ) {
+        throw new Error('No data found to backup');
+      }
+
+      // Use existing JSON export logic
+      await this.exportAllDataToJSON(
+        tasks,
+        timeEntries,
+        clients,
+        projects,
+        columns,
+        settings
+      );
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Export all data (tasks, time entries, clients, projects) to CSV or JSON format
    * 
    * @param format - Export format ('csv' or 'json')

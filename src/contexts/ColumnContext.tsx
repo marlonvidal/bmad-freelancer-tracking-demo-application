@@ -14,6 +14,7 @@ interface ColumnContextValue extends ColumnState {
   deleteColumn: (id: string) => Promise<void>;
   reorderColumns: (columnIds: string[]) => Promise<void>;
   getColumnById: (id: string) => Column | undefined;
+  refreshColumns: () => Promise<void>;
 }
 
 const ColumnContext = createContext<ColumnContextValue | undefined>(undefined);
@@ -232,7 +233,8 @@ export const ColumnProvider: React.FC<ColumnProviderProps> = ({ children }) => {
     updateColumn,
     deleteColumn,
     reorderColumns,
-    getColumnById
+    getColumnById,
+    refreshColumns: loadColumns
   };
 
   return (

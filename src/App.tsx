@@ -16,6 +16,7 @@ import { FilterProvider } from './contexts/FilterContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { RevenueDashboard } from './components/revenue/RevenueDashboard';
 import { ExportOptions } from './components/settings/ExportOptions';
+import { BackupRestoreOptions } from './components/settings/BackupRestoreOptions';
 
 /**
  * AppContent - Renders the appropriate view based on current view state
@@ -35,6 +36,7 @@ const AppContent: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
             <div className="space-y-6">
               <ExportOptions />
+              <BackupRestoreOptions />
             </div>
           </div>
         </div>
