@@ -13,10 +13,12 @@ import { ClientProvider } from './contexts/ClientContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { FilterProvider } from './contexts/FilterContext';
+import { OnboardingProvider } from './contexts/OnboardingContext';
 import { DarkModeApplier } from './components/common/DarkModeApplier';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { RevenueDashboard } from './components/revenue/RevenueDashboard';
 import { SettingsPanel } from './components/settings/SettingsPanel';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 
 /**
  * AppContent - Renders the appropriate view based on current view state
@@ -45,20 +47,23 @@ export const App: React.FC = () => {
       <UpdateNotification updateAvailable={updateAvailable} onUpdate={activateUpdate} onDismiss={dismissUpdate} />
       <ViewProvider>
         <SettingsProvider>
-          <DarkModeApplier />
-          <ColumnProvider>
-            <TaskProvider>
-              <ClientProvider>
-                <ProjectProvider>
-                  <FilterProvider>
-                    <TimerProvider>
-                      <AppContent />
-                    </TimerProvider>
-                  </FilterProvider>
-                </ProjectProvider>
-              </ClientProvider>
-            </TaskProvider>
-          </ColumnProvider>
+          <OnboardingProvider>
+            <DarkModeApplier />
+            <ColumnProvider>
+              <TaskProvider>
+                <ClientProvider>
+                  <ProjectProvider>
+                    <FilterProvider>
+                      <TimerProvider>
+                        <AppContent />
+                        <OnboardingWizard />
+                      </TimerProvider>
+                    </FilterProvider>
+                  </ProjectProvider>
+                </ClientProvider>
+              </TaskProvider>
+            </ColumnProvider>
+          </OnboardingProvider>
         </SettingsProvider>
       </ViewProvider>
     </>

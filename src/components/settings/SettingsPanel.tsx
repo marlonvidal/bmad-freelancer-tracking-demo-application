@@ -4,6 +4,7 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { TaskDefaultsSettings } from './TaskDefaultsSettings';
 import { KeyboardShortcutsSection } from './KeyboardShortcutsSection';
 import { DataManagementSettings } from './DataManagementSettings';
+import { OnboardingSettings } from './OnboardingSettings';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { getDefaultSettings } from '@/utils/settingsDefaults';
 
@@ -121,6 +122,9 @@ export const SettingsPanel: React.FC = () => {
 
           {/* Data Management Section */}
           <DataManagementSettings />
+
+          {/* Onboarding Section */}
+          <OnboardingSettings />
         </div>
 
         {/* Reset to Defaults Section */}

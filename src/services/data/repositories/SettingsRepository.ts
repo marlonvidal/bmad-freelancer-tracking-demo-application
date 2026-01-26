@@ -86,6 +86,7 @@ export class SettingsRepository {
       defaultHourlyRate: null,
       keyboardShortcuts: {},
       onboardingCompleted: false,
+      onboardingStep: 0, // 0 = not started
       updatedAt: new Date()
     };
   }

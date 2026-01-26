@@ -1,0 +1,83 @@
+schema: 1
+story: "4.7"
+story_title: "Onboarding Wizard"
+gate: CONCERNS
+status_reason: "Excellent progress - all component tests passing (24/24), core functionality well tested (53/58 tests passing). Remaining concerns: integration test timing issues (5 tests), tooltip/highlight system not integrated (AC 11), E2E tests pending."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-26T20:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "INTEGRATION-001"
+    severity: medium
+    finding: "Tooltip/Highlight system (OnboardingTooltip, OnboardingHighlight) created but not actually integrated into step components. Step components provide text instructions but don't use the visual highlighting system (AC 11 partially met)."
+    suggested_action: "Integrate OnboardingTooltip and OnboardingHighlight into step components to visually guide users to UI elements (ClientSelector, ProjectSelector, Add Task button, Timer button, etc.)"
+    suggested_owner: dev
+  - id: "TEST-002"
+    severity: medium
+    finding: "Integration tests have 5 failures (4/9 passing) - timeout/async timing issues. Core logic appears correct, but test timing needs adjustment for context loading and step transitions."
+    suggested_action: "Review integration test timeouts and async handling. Consider increasing timeouts or improving wait conditions for context loading and step transitions."
+    suggested_owner: dev
+  - id: "TEST-003"
+    severity: low
+    finding: "E2E tests (Task 24) not yet implemented. While unit and integration tests provide good coverage, E2E tests would validate the complete user journey."
+    suggested_action: "Implement E2E tests using Playwright for complete onboarding workflow, including wizard appearance, step navigation, sample data operations, and keyboard navigation."
+    suggested_owner: dev
+
+risk_summary:
+  totals:
+    critical: 0
+    high: 0
+    medium: 2
+    low: 1
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Integrate tooltip/highlight system into step components for better UX (AC 11)"
+      - "Fix integration test timing issues for complete validation"
+      - "Implement E2E tests for complete user journey validation"
+
+quality_score: 85
+expires: "2026-02-09T20:00:00Z"
+
+evidence:
+  tests_reviewed: 58
+  tests_passing: 53
+  tests_failing: 5
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14]
+    ac_gaps: [11]  # Tooltips/highlights not integrated
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No security concerns - local-only operations, no external API calls, proper data validation via repositories. Sample data deletion requires confirmation."
+  performance:
+    status: PASS
+    notes: "OnboardingHighlight optimized with useMemo. Sample data generation is sequential but acceptable for one-time operation. Proper use of React hooks, no unnecessary re-renders."
+  reliability:
+    status: CONCERNS
+    notes: "Error handling improved with user-facing feedback. Integration test timing issues indicate potential race conditions in test environment, but core functionality validated. Missing error boundaries for wizard component."
+  maintainability:
+    status: CONCERNS
+    notes: "Good code structure and TypeScript types. Tooltip/highlight system not integrated limits maintainability and visual guidance. Integration test timing issues need resolution. Code follows project patterns (Context API, repository pattern, Tailwind CSS)."
+
+recommendations:
+  immediate:
+    - action: "Integrate OnboardingTooltip and OnboardingHighlight into step components for visual guidance (AC 11)"
+      refs:
+        - "src/components/onboarding/steps/AddClientStep.tsx"
+        - "src/components/onboarding/steps/AddProjectStep.tsx"
+        - "src/components/onboarding/steps/CreateTaskStep.tsx"
+    - action: "Fix integration test timeout/async issues"
+      refs:
+        - "tests/integration/OnboardingWorkflow.test.tsx"
+  future:
+    - action: "Implement E2E tests for complete onboarding workflow using Playwright"
+      refs:
+        - "tests/e2e/onboarding.spec.ts"
+    - action: "Consider adding error boundary around OnboardingWizard component"
+      refs:
+        - "src/App.tsx"

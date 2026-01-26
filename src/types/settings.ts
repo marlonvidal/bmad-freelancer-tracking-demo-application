@@ -8,5 +8,6 @@ export interface Settings {
   defaultHourlyRate: number | null;
   keyboardShortcuts: Record<string, string>;
   onboardingCompleted: boolean;
+  onboardingStep: number; // Current step (0 = not started, -1 = completed, 1-6 = step number)
   updatedAt: Date;
 }
