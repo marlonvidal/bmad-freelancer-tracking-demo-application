@@ -211,7 +211,7 @@ export const TaskFilterBar: React.FC = () => {
 
   return (
     <div 
-      className="bg-white border-b border-gray-200 px-4 py-3 mb-4"
+      className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 mb-4"
       role="region"
       aria-label="Task filters"
     >
@@ -220,7 +220,7 @@ export const TaskFilterBar: React.FC = () => {
         <div className="flex-1 min-w-[200px]">
           <label 
             htmlFor="filter-client-select" 
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Filter by Client
           </label>
@@ -229,8 +229,8 @@ export const TaskFilterBar: React.FC = () => {
             value={filters.clientId || ''}
             onChange={handleClientChange}
             disabled={clientsLoading}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              clientsLoading ? 'border-gray-300 bg-gray-50' : 'border-gray-300'
+            className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+              clientsLoading ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800' : 'border-gray-300 dark:border-gray-600'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
             aria-label="Select client to filter tasks"
             aria-describedby={clientsLoading ? 'client-filter-loading' : undefined}
@@ -245,7 +245,7 @@ export const TaskFilterBar: React.FC = () => {
           {clientsLoading && (
             <p 
               id="client-filter-loading" 
-              className="mt-1 text-xs text-gray-500"
+              className="mt-1 text-xs text-gray-500 dark:text-gray-400"
             >
               Loading clients...
             </p>
@@ -256,7 +256,7 @@ export const TaskFilterBar: React.FC = () => {
         <div className="flex-1 min-w-[200px]">
           <label 
             htmlFor="filter-project-select" 
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Filter by Project
           </label>
@@ -265,10 +265,10 @@ export const TaskFilterBar: React.FC = () => {
             value={filters.projectId || ''}
             onChange={handleProjectChange}
             disabled={!filters.clientId || projectsLoading}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
               !filters.clientId 
-                ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' 
-                : 'border-gray-300'
+                ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed' 
+                : 'border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
             aria-label={filters.clientId ? "Select project to filter tasks" : "Select a client first to filter by project"}
             aria-describedby={!filters.clientId ? 'project-filter-disabled' : projectsLoading ? 'project-filter-loading' : undefined}
@@ -283,7 +283,7 @@ export const TaskFilterBar: React.FC = () => {
           {!filters.clientId && (
             <p 
               id="project-filter-disabled" 
-              className="mt-1 text-xs text-gray-500"
+              className="mt-1 text-xs text-gray-500 dark:text-gray-400"
             >
               Select a client to filter by project
             </p>
@@ -291,7 +291,7 @@ export const TaskFilterBar: React.FC = () => {
           {filters.clientId && projectsLoading && (
             <p 
               id="project-filter-loading" 
-              className="mt-1 text-xs text-gray-500"
+              className="mt-1 text-xs text-gray-500 dark:text-gray-400"
             >
               Loading projects...
             </p>
@@ -299,7 +299,7 @@ export const TaskFilterBar: React.FC = () => {
           {filters.clientId && !projectsLoading && availableProjects.length === 0 && (
             <p 
               id="project-filter-empty" 
-              className="mt-1 text-xs text-gray-500"
+              className="mt-1 text-xs text-gray-500 dark:text-gray-400"
             >
               No projects available
             </p>
@@ -310,7 +310,7 @@ export const TaskFilterBar: React.FC = () => {
         <div className="flex-1 min-w-[150px]">
           <label 
             htmlFor="filter-billable-select" 
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Billable Status
           </label>
@@ -318,7 +318,7 @@ export const TaskFilterBar: React.FC = () => {
             id="filter-billable-select"
             value={filters.billableStatus === null ? '' : filters.billableStatus.toString()}
             onChange={handleBillableChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             aria-label="Filter by billable status"
           >
             <option value="">All</option>
@@ -331,7 +331,7 @@ export const TaskFilterBar: React.FC = () => {
         <div className="flex-1 min-w-[150px]">
           <label 
             htmlFor="filter-priority-select" 
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Priority
           </label>
@@ -339,7 +339,7 @@ export const TaskFilterBar: React.FC = () => {
             id="filter-priority-select"
             value={filters.priority || ''}
             onChange={handlePriorityChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             aria-label="Filter by priority"
           >
             <option value="">All</option>
@@ -352,7 +352,7 @@ export const TaskFilterBar: React.FC = () => {
         {/* Due Date Range Filters */}
         <div className="flex-1 min-w-[200px]">
           <label 
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Due Date Range
           </label>
@@ -361,15 +361,15 @@ export const TaskFilterBar: React.FC = () => {
               type="date"
               value={formatDateForInput(filters.dueDateRange.start)}
               onChange={handleDueDateStartChange}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               aria-label="Filter by due date start"
             />
-            <span className="self-center text-gray-500">to</span>
+            <span className="self-center text-gray-500 dark:text-gray-400">to</span>
             <input
               type="date"
               value={formatDateForInput(filters.dueDateRange.end)}
               onChange={handleDueDateEndChange}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               aria-label="Filter by due date end"
             />
           </div>
@@ -379,7 +379,7 @@ export const TaskFilterBar: React.FC = () => {
         <div className="flex-1 min-w-[200px]">
           <label 
             htmlFor="filter-tags-select" 
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Tags
           </label>
@@ -388,7 +388,7 @@ export const TaskFilterBar: React.FC = () => {
             multiple
             value={filters.tags}
             onChange={handleTagChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             aria-label="Filter by tags (hold Ctrl/Cmd to select multiple)"
             size={Math.min(allTags.length + 1, 5)}
           >
@@ -403,7 +403,7 @@ export const TaskFilterBar: React.FC = () => {
             )}
           </select>
           {filters.tags.length > 0 && (
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {filters.tags.length} tag{filters.tags.length !== 1 ? 's' : ''} selected
             </p>
           )}
@@ -415,7 +415,7 @@ export const TaskFilterBar: React.FC = () => {
             <button
               type="button"
               onClick={handleClearFilters}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
               aria-label="Clear all filters"
             >
               Clear Filters
@@ -426,7 +426,7 @@ export const TaskFilterBar: React.FC = () => {
 
       {/* Filtered Task Count */}
       {hasActiveFilters && (
-        <div className="mt-2 text-sm text-gray-600">
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
           Showing <span className="font-semibold">{filteredTaskCount}</span> of <span className="font-semibold">{totalTaskCount}</span> task{totalTaskCount !== 1 ? 's' : ''}
         </div>
       )}

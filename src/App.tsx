@@ -13,6 +13,7 @@ import { ClientProvider } from './contexts/ClientContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { FilterProvider } from './contexts/FilterContext';
+import { DarkModeApplier } from './components/common/DarkModeApplier';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { RevenueDashboard } from './components/revenue/RevenueDashboard';
 import { ExportOptions } from './components/settings/ExportOptions';
@@ -31,9 +32,9 @@ const AppContent: React.FC = () => {
       {currentView === 'board' && <KanbanBoard />}
       {currentView === 'dashboard' && <RevenueDashboard />}
       {currentView === 'settings' && (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Settings</h1>
             <div className="space-y-6">
               <ExportOptions />
               <BackupRestoreOptions />
@@ -55,6 +56,7 @@ export const App: React.FC = () => {
       <UpdateNotification updateAvailable={updateAvailable} onUpdate={activateUpdate} onDismiss={dismissUpdate} />
       <ViewProvider>
         <SettingsProvider>
+          <DarkModeApplier />
           <ColumnProvider>
             <TaskProvider>
               <ClientProvider>

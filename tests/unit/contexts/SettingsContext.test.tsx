@@ -24,6 +24,7 @@ const TestComponent: React.FC<{ onContextValue?: (value: any) => void }> = ({ on
             {context.getDefaultBillableStatus() ? 'true' : 'false'}
           </div>
           <div data-testid="dark-mode">{context.settings.darkMode ? 'true' : 'false'}</div>
+          <div data-testid="is-dark-mode">{context.isDarkMode() ? 'true' : 'false'}</div>
         </div>
       )}
     </div>
@@ -308,6 +309,313 @@ describe('SettingsContext', () => {
 
       // Restore original method
       jest.restoreAllMocks();
+    });
+  });
+
+  describe('dark mode methods', () => {
+    describe('isDarkMode', () => {
+      it('returns false when dark mode is disabled', async () => {
+        const repository = new SettingsRepository();
+        await repository.updateSettings({ darkMode: false });
+
+        render(
+          <SettingsProvider>
+            <TestComponent />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+        });
+
+        expect(screen.getByTestId('is-dark-mode')).toHaveTextContent('false');
+      });
+
+      it('returns true when dark mode is enabled', async () => {
+        const repository = new SettingsRepository();
+        await repository.updateSettings({ darkMode: true });
+
+        render(
+          <SettingsProvider>
+            <TestComponent />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+        });
+
+        expect(screen.getByTestId('is-dark-mode')).toHaveTextContent('true');
+      });
+
+      it('returns false when settings are not loaded', () => {
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        // Before settings load, should return false
+        expect(contextValue.isDarkMode()).toBe(false);
+      });
+
+      it('reflects changes after settings update', async () => {
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(contextValue?.settings).not.toBeNull();
+        });
+
+        // Initially false
+        expect(contextValue.isDarkMode()).toBe(false);
+
+        // Update to true
+        await act(async () => {
+          await contextValue.updateSettings({ darkMode: true });
+        });
+
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(true);
+        });
+
+        // Update back to false
+        await act(async () => {
+          await contextValue.updateSettings({ darkMode: false });
+        });
+
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(false);
+        });
+      });
+    });
+
+    describe('toggleDarkMode', () => {
+      it('toggles dark mode from false to true', async () => {
+        const repository = new SettingsRepository();
+        await repository.updateSettings({ darkMode: false });
+
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(contextValue?.settings).not.toBeNull();
+        });
+
+        expect(contextValue.isDarkMode()).toBe(false);
+
+        await act(async () => {
+          await contextValue.toggleDarkMode();
+        });
+
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(true);
+        });
+
+        // Verify persistence
+        const settings = await repository.getSettings();
+        expect(settings.darkMode).toBe(true);
+      });
+
+      it('toggles dark mode from true to false', async () => {
+        const repository = new SettingsRepository();
+        await repository.updateSettings({ darkMode: true });
+
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(contextValue?.settings).not.toBeNull();
+        });
+
+        expect(contextValue.isDarkMode()).toBe(true);
+
+        await act(async () => {
+          await contextValue.toggleDarkMode();
+        });
+
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(false);
+        });
+
+        // Verify persistence
+        const settings = await repository.getSettings();
+        expect(settings.darkMode).toBe(false);
+      });
+
+      it('persists toggle across component remounts', async () => {
+        const repository = new SettingsRepository();
+        await repository.updateSettings({ darkMode: false });
+
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        const { unmount } = render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(contextValue?.settings).not.toBeNull();
+        });
+
+        // Toggle to true
+        await act(async () => {
+          await contextValue.toggleDarkMode();
+        });
+
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(true);
+        });
+
+        // Unmount and remount
+        unmount();
+
+        let newContextValue: any;
+        const onNewContextValue = (value: any) => {
+          newContextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onNewContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(newContextValue?.settings).not.toBeNull();
+        });
+
+        // Should still be true after remount
+        expect(newContextValue.isDarkMode()).toBe(true);
+      });
+
+      it('throws error when settings are not loaded', async () => {
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        // Before settings load
+        await expect(async () => {
+          await act(async () => {
+            await contextValue.toggleDarkMode();
+          });
+        }).rejects.toThrow('Settings not loaded');
+      });
+
+      it('uses optimistic update', async () => {
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(contextValue?.settings).not.toBeNull();
+        });
+
+        const originalDarkMode = contextValue.isDarkMode();
+
+        // Start toggle (don't await yet)
+        const togglePromise = contextValue.toggleDarkMode();
+
+        // Check optimistic update immediately (before promise resolves)
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(!originalDarkMode);
+        }, { timeout: 1000 });
+
+        // Wait for toggle to complete
+        await act(async () => {
+          await togglePromise;
+        });
+
+        // Verify final state
+        expect(contextValue.isDarkMode()).toBe(!originalDarkMode);
+      });
+
+      it('reverts on error', async () => {
+        let contextValue: any;
+        const onContextValue = (value: any) => {
+          contextValue = value;
+        };
+
+        render(
+          <SettingsProvider>
+            <TestComponent onContextValue={onContextValue} />
+          </SettingsProvider>
+        );
+
+        await waitFor(() => {
+          expect(contextValue?.settings).not.toBeNull();
+        });
+
+        const originalDarkMode = contextValue.isDarkMode();
+
+        // Mock SettingsRepository.prototype.updateSettings to throw error
+        jest.spyOn(SettingsRepository.prototype, 'updateSettings').mockRejectedValueOnce(
+          new Error('Toggle failed')
+        );
+
+        try {
+          await act(async () => {
+            await contextValue.toggleDarkMode();
+          });
+        } catch (error) {
+          // Expected to throw
+        }
+
+        // Should revert to original value after error
+        await waitFor(() => {
+          expect(contextValue.isDarkMode()).toBe(originalDarkMode);
+        }, { timeout: 2000 });
+
+        // Restore original method
+        jest.restoreAllMocks();
+      });
     });
   });
 });

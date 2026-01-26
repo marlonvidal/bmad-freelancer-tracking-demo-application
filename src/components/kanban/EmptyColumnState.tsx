@@ -17,7 +17,7 @@ export const EmptyColumnState: React.FC<EmptyColumnStateProps> = ({ columnName }
       role="status"
       aria-label={`No tasks in ${columnName} column`}
     >
-      <div className="text-gray-400 mb-2">
+      <div className="text-gray-400 dark:text-gray-500 mb-2">
         <svg 
           className="w-12 h-12 mx-auto" 
           fill="none" 
@@ -33,7 +33,7 @@ export const EmptyColumnState: React.FC<EmptyColumnStateProps> = ({ columnName }
           />
         </svg>
       </div>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-400">
         No tasks in this column
       </p>
     </div>

@@ -272,13 +272,13 @@ export const KanbanBoard: React.FC = () => {
   if (loading) {
     return (
       <div 
-        className="flex items-center justify-center min-h-screen bg-gray-50"
+        className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900"
         role="status"
         aria-label="Loading kanban board"
       >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading columns...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading columns...</p>
         </div>
       </div>
     );
@@ -287,13 +287,13 @@ export const KanbanBoard: React.FC = () => {
   if (error) {
     return (
       <div 
-        className="flex items-center justify-center min-h-screen bg-gray-50"
+        className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900"
         role="alert"
         aria-label="Error loading kanban board"
       >
-        <div className="text-center p-6 bg-red-50 border border-red-200 rounded-lg">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Error Loading Board</h2>
-          <p className="text-red-600">{error.message}</p>
+        <div className="text-center p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <h2 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">Error Loading Board</h2>
+          <p className="text-red-600 dark:text-red-400">{error.message}</p>
         </div>
       </div>
     );
@@ -301,7 +301,7 @@ export const KanbanBoard: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gray-50 p-4"
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4"
       role="region"
       aria-label="Kanban board"
     >
@@ -318,7 +318,7 @@ export const KanbanBoard: React.FC = () => {
             setInitialColumnId(undefined);
             setIsTaskModalOpen(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           aria-label="Add new task (Cmd/Ctrl + N)"
           title="Add new task (Cmd/Ctrl + N)"
         >

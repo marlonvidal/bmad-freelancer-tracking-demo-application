@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth transitions for dark mode */
+* {
+  transition-property: color, background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* Note: Transitions are enabled globally. The dark class is applied synchronously 
+   in main.tsx before React renders to prevent flash, so no need to disable transitions. */
+
 @keyframes slide-in-right {
   from {
     transform: translateX(100%);

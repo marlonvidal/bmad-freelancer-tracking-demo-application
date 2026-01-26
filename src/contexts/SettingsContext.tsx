@@ -10,6 +10,8 @@ interface SettingsContextValue {
   getDefaultBillableStatus: () => boolean;
   getDefaultHourlyRate: () => number | null;
   refreshSettings: () => Promise<void>;
+  toggleDarkMode: () => Promise<void>;
+  isDarkMode: () => boolean;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -104,6 +106,25 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     return settings?.defaultHourlyRate ?? null;
   }, [settings]);
 
+  /**
+   * Toggle dark mode preference
+   * Updates darkMode setting and persists to IndexedDB
+   */
+  const toggleDarkMode = useCallback(async (): Promise<void> => {
+    if (!settings) {
+      throw new Error('Settings not loaded');
+    }
+    await updateSettings({ darkMode: !settings.darkMode });
+  }, [settings, updateSettings]);
+
+  /**
+   * Get current dark mode state
+   * @returns true if dark mode is enabled, false otherwise
+   */
+  const isDarkMode = useCallback((): boolean => {
+    return settings?.darkMode ?? false;
+  }, [settings]);
+
   const value: SettingsContextValue = {
     settings,
     loading,
@@ -111,7 +132,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     updateSettings,
     getDefaultBillableStatus,
     getDefaultHourlyRate,
-    refreshSettings: loadSettings
+    refreshSettings: loadSettings,
+    toggleDarkMode,
+    isDarkMode
   };
 
   return (

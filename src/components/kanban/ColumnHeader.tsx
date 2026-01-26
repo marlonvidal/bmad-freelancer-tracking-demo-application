@@ -123,7 +123,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
   };
 
   return (
-    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
       <div className="flex items-center justify-between gap-2">
         {/* Column Name - Editable */}
         <div className="flex-1 min-w-0">
@@ -139,14 +139,14 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
                 }}
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
-                className={`w-full px-2 py-1 text-sm font-semibold border rounded ${
-                  isValid ? 'border-gray-300' : 'border-red-500'
-                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full px-2 py-1 text-sm font-semibold border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 ${
+                  isValid ? '' : 'border-red-500 dark:border-red-500'
+                } focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400`}
                 aria-label={`Edit column name, current name: ${column.name}`}
                 aria-invalid={!isValid}
               />
               {!isValid && (
-                <span className="text-xs text-red-600" role="alert">
+                <span className="text-xs text-red-600 dark:text-red-400" role="alert">
                   Column name must be unique and not empty
                 </span>
               )}
@@ -154,7 +154,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
           ) : (
             <button
               onClick={handleEditStart}
-              className="text-left font-semibold text-gray-900 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 -ml-1"
+              className="text-left font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 -ml-1"
               aria-label={`Edit column name: ${column.name}`}
             >
               {column.name}
@@ -164,7 +164,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
 
         {/* Task Count Badge */}
         <span 
-          className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-full whitespace-nowrap"
+          className="px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full whitespace-nowrap"
           aria-label={`${taskCount} tasks in ${column.name}`}
         >
           {taskCount}
@@ -174,7 +174,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
         {onAddTask && (
           <button
             onClick={onAddTask}
-            className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors"
+            className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded transition-colors"
             aria-label={`Add task to ${column.name}`}
             title={`Add task to ${column.name}`}
           >
@@ -199,7 +199,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-1 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
             aria-label={`${column.name} column options`}
             aria-expanded={isMenuOpen}
             aria-haspopup="true"
@@ -223,13 +223,13 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
           {/* Dropdown Menu */}
           {isMenuOpen && (
             <div 
-              className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200"
+              className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700"
               role="menu"
               aria-label="Column options menu"
             >
               <button
                 onClick={handleEditStart}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
                 role="menuitem"
               >
                 Edit Name
@@ -239,7 +239,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({ column, taskCount, o
                   onDelete(column.id);
                   setIsMenuOpen(false);
                 }}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:bg-red-50"
+                className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:bg-red-50 dark:focus:bg-red-900/20"
                 role="menuitem"
                 aria-label={`Delete ${column.name} column`}
               >

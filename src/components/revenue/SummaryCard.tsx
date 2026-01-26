@@ -27,15 +27,15 @@ const SummaryCardComponent: React.FC<SummaryCardProps> = ({
   if (loading) {
     return (
       <div
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
         role="status"
         aria-label={`Loading ${title} summary`}
         aria-live="polite"
       >
-        <h3 className="text-sm font-medium text-gray-500 mb-4">{title}</h3>
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">{title}</h3>
         <div className="space-y-3">
-          <div className="h-8 bg-gray-200 rounded animate-pulse" aria-hidden="true" />
-          <div className="h-6 bg-gray-200 rounded animate-pulse w-3/4" aria-hidden="true" />
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" aria-hidden="true" />
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4" aria-hidden="true" />
         </div>
       </div>
     );
@@ -43,19 +43,19 @@ const SummaryCardComponent: React.FC<SummaryCardProps> = ({
 
   return (
     <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
       role="region"
       aria-label={`${title} summary`}
     >
-      <h3 className="text-sm font-medium text-gray-500 mb-4">{title}</h3>
+      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">{title}</h3>
       <div className="space-y-2">
         <div>
-          <p className="text-2xl font-bold text-gray-900" aria-label={`Revenue: ${formatCurrency(revenue)}`}>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100" aria-label={`Revenue: ${formatCurrency(revenue)}`}>
             {formatCurrency(revenue)}
           </p>
         </div>
         <div>
-          <p className="text-sm text-gray-600" aria-label={`Billable hours: ${formatDuration(hoursInMinutes)}`}>
+          <p className="text-sm text-gray-600 dark:text-gray-300" aria-label={`Billable hours: ${formatDuration(hoursInMinutes)}`}>
             {formatDuration(hoursInMinutes)}
           </p>
         </div>

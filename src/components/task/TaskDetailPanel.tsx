@@ -243,7 +243,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ease-out"
+        className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 transition-opacity duration-300 ease-out"
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
@@ -257,7 +257,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         className={`
           fixed top-0 right-0 h-full z-50
           w-full md:w-[500px]
-          bg-white shadow-xl
+          bg-white dark:bg-gray-800 shadow-xl
           transform transition-transform duration-300 ease-out
           will-change-transform
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
@@ -265,10 +265,10 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         `}
       >
         {/* Panel Header */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2
             id="task-detail-panel-title"
-            className="text-xl font-semibold text-gray-900"
+            className="text-xl font-semibold text-gray-900 dark:text-gray-100"
           >
             Task Details
           </h2>
@@ -277,7 +277,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               if (el) firstFocusableRef.current = el;
             }}
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
             aria-label="Close task detail panel"
             title="Close (ESC)"
           >
@@ -306,18 +306,18 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <label
                   htmlFor="task-title"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
                   Title
                 </label>
                 {titleSaveState.status === 'saving' && (
-                  <span className="text-xs text-gray-500">Saving...</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Saving...</span>
                 )}
                 {titleSaveState.status === 'saved' && (
-                  <span className="text-xs text-green-600">Saved</span>
+                  <span className="text-xs text-green-600 dark:text-green-400">Saved</span>
                 )}
                 {titleSaveState.status === 'error' && (
-                  <span className="text-xs text-red-600">Error</span>
+                  <span className="text-xs text-red-600 dark:text-red-400">Error</span>
                 )}
               </div>
               <input
@@ -327,7 +327,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                 onChange={(e) => {
                   setLocalTask(prev => prev ? { ...prev, title: e.target.value } : null);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-semibold text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-lg font-semibold"
                 aria-describedby="task-title-description"
               />
               <p id="task-title-description" className="sr-only">
@@ -340,18 +340,18 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <label
                   htmlFor="task-description"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
                   Description
                 </label>
                 {descriptionSaveState.status === 'saving' && (
-                  <span className="text-xs text-gray-500">Saving...</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Saving...</span>
                 )}
                 {descriptionSaveState.status === 'saved' && (
-                  <span className="text-xs text-green-600">Saved</span>
+                  <span className="text-xs text-green-600 dark:text-green-400">Saved</span>
                 )}
                 {descriptionSaveState.status === 'error' && (
-                  <span className="text-xs text-red-600">Error</span>
+                  <span className="text-xs text-red-600 dark:text-red-400">Error</span>
                 )}
               </div>
               <textarea
@@ -362,7 +362,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                 }}
                 rows={4}
                 placeholder="Add a description..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700 resize-y"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm resize-y"
                 aria-describedby="task-description-description"
               />
               <p id="task-description-description" className="sr-only">
@@ -374,7 +374,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             <section>
               <label
                 htmlFor="task-due-date"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
                 Due Date
               </label>
@@ -387,7 +387,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                   setLocalTask(prev => prev ? { ...prev, dueDate: newDate } : null);
                   await handleSave({ dueDate: newDate });
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm"
                 aria-describedby="task-due-date-description"
               />
               <p id="task-due-date-description" className="sr-only">
@@ -399,7 +399,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             <section>
               <label
                 htmlFor="task-priority"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
                 Priority
               </label>
@@ -411,7 +411,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                   setLocalTask(prev => prev ? { ...prev, priority: newPriority } : null);
                   await handleSave({ priority: newPriority });
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm"
                 aria-describedby="task-priority-description"
               >
                 <option value="">None</option>
@@ -428,7 +428,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             <section>
               <label
                 htmlFor="task-tags"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
                 Tags (comma-separated)
               </label>
@@ -445,7 +445,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                   await handleSave({ tags });
                 }}
                 placeholder="tag1, tag2, tag3"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm"
                 aria-describedby="task-tags-description"
               />
               <p id="task-tags-description" className="sr-only">
@@ -535,13 +535,13 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                   Time Estimate (minutes)
                 </label>
                 {timeEstimateSaveState.status === 'saving' && (
-                  <span className="text-xs text-gray-500">Saving...</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Saving...</span>
                 )}
                 {timeEstimateSaveState.status === 'saved' && (
-                  <span className="text-xs text-green-600">Saved</span>
+                  <span className="text-xs text-green-600 dark:text-green-400">Saved</span>
                 )}
                 {timeEstimateSaveState.status === 'error' && (
-                  <span className="text-xs text-red-600">Error</span>
+                  <span className="text-xs text-red-600 dark:text-red-400">Error</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -556,7 +556,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                     setLocalTask(prev => prev ? { ...prev, timeEstimate: value } : null);
                   }}
                   placeholder="No estimate"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm"
                   aria-describedby="task-time-estimate-description"
                 />
                 {localTask && localTask.timeEstimate !== null && localTask.timeEstimate !== undefined && (

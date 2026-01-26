@@ -57,7 +57,7 @@ export const SearchBar: React.FC = () => {
 
   return (
     <div 
-      className="bg-white border-b border-gray-200 px-4 py-3 mb-4"
+      className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 mb-4"
       role="search"
       aria-label="Search tasks"
     >
@@ -65,7 +65,7 @@ export const SearchBar: React.FC = () => {
         {/* Search Icon */}
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg
-            className="h-5 w-5 text-gray-400"
+            className="h-5 w-5 text-gray-400 dark:text-gray-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -89,8 +89,11 @@ export const SearchBar: React.FC = () => {
           placeholder="Search tasks by title, description, or tags..."
           className={`
             w-full pl-10 pr-10 py-2 border rounded-md
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-            ${localQuery ? 'border-gray-300' : 'border-gray-300'}
+            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+            border-gray-300 dark:border-gray-600
+            placeholder-gray-400 dark:placeholder-gray-500
+            focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400
+            ${localQuery ? '' : ''}
           `}
           aria-label="Search tasks by title, description, or tags"
           aria-describedby="search-help-text"
@@ -101,7 +104,7 @@ export const SearchBar: React.FC = () => {
           <button
             type="button"
             onClick={handleClear}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 rounded-md"
             aria-label="Clear search"
           >
             <svg
@@ -125,9 +128,9 @@ export const SearchBar: React.FC = () => {
       {/* Help Text */}
       <p 
         id="search-help-text" 
-        className="mt-1 text-xs text-gray-500"
+        className="mt-1 text-xs text-gray-500 dark:text-gray-400"
       >
-        Press <kbd className="px-1 py-0.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">Ctrl+F</kbd> or <kbd className="px-1 py-0.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">Cmd+F</kbd> to focus search
+        Press <kbd className="px-1 py-0.5 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">Ctrl+F</kbd> or <kbd className="px-1 py-0.5 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">Cmd+F</kbd> to focus search
       </p>
     </div>
   );

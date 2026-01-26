@@ -74,8 +74,8 @@ export const Column: React.FC<ColumnProps> = ({ column }) => {
     <div
       ref={setDroppableRef}
       className={`
-        flex flex-col w-80 sm:w-80 md:w-80 lg:w-80 bg-white rounded-lg shadow-sm border flex-shrink-0
-        ${isOver ? 'border-blue-400 bg-blue-50/10 ring-2 ring-blue-200' : 'border-gray-200'}
+        flex flex-col w-80 sm:w-80 md:w-80 lg:w-80 bg-white dark:bg-gray-800 rounded-lg shadow-sm border flex-shrink-0
+        ${isOver ? 'border-blue-400 dark:border-blue-500 bg-blue-50/10 dark:bg-blue-900/20 ring-2 ring-blue-200 dark:ring-blue-700' : 'border-gray-200 dark:border-gray-700'}
         transition-colors duration-150 ease-out
       `}
       role="region"

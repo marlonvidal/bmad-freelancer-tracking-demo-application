@@ -187,24 +187,24 @@ export const RevenueDashboard: React.FC = () => {
   if (loading) {
     return (
       <div
-        className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8"
+        className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 lg:p-8"
         role="region"
         aria-label="Revenue dashboard"
         aria-busy="true"
       >
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Revenue Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Revenue Dashboard</h1>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <SummaryCard title="Daily" revenue={0} hours={0} loading={true} />
             <SummaryCard title="Weekly" revenue={0} hours={0} loading={true} />
             <SummaryCard title="Monthly" revenue={0} hours={0} loading={true} />
           </div>
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="h-64 bg-gray-200 rounded animate-pulse" aria-hidden="true" />
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" aria-hidden="true" />
             </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="h-64 bg-gray-200 rounded animate-pulse" aria-hidden="true" />
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" aria-hidden="true" />
             </div>
           </div>
         </div>
@@ -216,19 +216,19 @@ export const RevenueDashboard: React.FC = () => {
   if (error) {
     return (
       <div
-        className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8"
+        className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 lg:p-8"
         role="region"
         aria-label="Revenue dashboard"
       >
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Revenue Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Revenue Dashboard</h1>
           <div
-            className="bg-red-50 border border-red-200 rounded-lg p-6"
+            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6"
             role="alert"
             aria-label="Error loading dashboard"
           >
-            <h2 className="text-lg font-semibold text-red-800 mb-2">Error Loading Dashboard</h2>
-            <p className="text-red-600">{error.message}</p>
+            <h2 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">Error Loading Dashboard</h2>
+            <p className="text-red-600 dark:text-red-400">{error.message}</p>
           </div>
         </div>
       </div>
@@ -247,7 +247,7 @@ export const RevenueDashboard: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Revenue Dashboard</h1>
           {isRecalculating && (
             <div
-              className="flex items-center gap-2 text-sm text-gray-600"
+              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
               role="status"
               aria-live="polite"
               aria-label="Updating dashboard data"
