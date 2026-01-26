@@ -15,6 +15,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { FilterProvider } from './contexts/FilterContext';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { RevenueDashboard } from './components/revenue/RevenueDashboard';
+import { ExportOptions } from './components/settings/ExportOptions';
 
 /**
  * AppContent - Renders the appropriate view based on current view state
@@ -32,7 +33,9 @@ const AppContent: React.FC = () => {
         <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
-            <p className="text-gray-600">Settings view coming soon.</p>
+            <div className="space-y-6">
+              <ExportOptions />
+            </div>
           </div>
         </div>
       )}

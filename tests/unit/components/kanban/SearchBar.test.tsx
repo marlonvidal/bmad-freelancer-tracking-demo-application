@@ -77,7 +77,7 @@ describe('SearchBar', () => {
     it('updates FilterContext when user types', async () => {
       let contextValue: any;
       const TestComponent = () => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
+         
         const context = useFilterContext();
         React.useEffect(() => {
           contextValue = context;
@@ -119,7 +119,7 @@ describe('SearchBar', () => {
     it('clears search when clicked', async () => {
       let contextValue: any;
       const TestComponent = () => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
+         
         const context = useFilterContext();
         React.useEffect(() => {
           contextValue = context;
@@ -178,7 +178,7 @@ describe('SearchBar', () => {
       
       let contextValue: any;
       const TestComponent = () => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
+         
         const context = useFilterContext();
         React.useEffect(() => {
           contextValue = context;
